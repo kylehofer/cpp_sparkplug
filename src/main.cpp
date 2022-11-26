@@ -1,6 +1,6 @@
 /*
  * File: main.cpp
- * Project: sparkplug_c
+ * Project: cpp_sparkplug
  * Created Date: Thursday November 17th 2022
  * Author: Kyle Hofer
  * 

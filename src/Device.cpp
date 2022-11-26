@@ -1,6 +1,6 @@
 /*
  * File: Device.cpp
- * Project: sparkplug_c
+ * Project: cpp_sparkplug
  * Created Date: Sunday September 25th 2022
  * Author: Kyle Hofer
  * 

@@ -1,6 +1,6 @@
 /*
  * File: NodeTests.cpp
- * Project: sparkplug_c
+ * Project: cpp_sparkplug
  * Created Date: Saturday November 26th 2022
  * Author: Kyle Hofer
  * 
