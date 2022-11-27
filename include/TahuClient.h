@@ -1,5 +1,5 @@
 /*
- * File: TahuBroker.h
+ * File: TahuClient.h
  * Project: cpp_sparkplug
  * Created Date: Friday November 18th 2022
  * Author: Kyle Hofer
@@ -29,10 +29,10 @@
  * HISTORY:
  */
 
-#ifndef INCLUDE_TAHUBROKER
-#define INCLUDE_TAHUBROKER
+#ifndef INCLUDE_TAHUCLIENT
+#define INCLUDE_TAHUCLIENT
 
-#include "SparkplugBroker.h"
+#include "SparkplugClient.h"
 #include "MQTTAsync.h"
 #include <queue>
 
@@ -42,7 +42,7 @@ using namespace std;
  * @brief 
  * 
  */
-class TahuBroker : SparkplugBroker
+class TahuClient : SparkplugClient
 {
 private:
     MQTTAsync client;
@@ -102,7 +102,7 @@ protected:
      * @param options 
      * @return int 
      */
-    int configureClient(BrokerOptions* options);
+    int configureClient(ClientOptions* options);
     /**
      * @brief Set the Primary object
      * 
@@ -111,28 +111,28 @@ protected:
      * @return false 
      */
     bool setPrimary(bool primary);
-    using SparkplugBroker::getHandler;
-    using SparkplugBroker::setState;
-    using SparkplugBroker::getState;
-    using SparkplugBroker::getPrimary;
+    using SparkplugClient::getHandler;
+    using SparkplugClient::setState;
+    using SparkplugClient::getState;
+    using SparkplugClient::getPrimary;
 public:
     /**
-     * @brief Construct a new Tahu Broker object
+     * @brief Construct a new Tahu Client object
      * 
      */
-    TahuBroker();
+    TahuClient();
     /**
-     * @brief Construct a new Tahu Broker object
+     * @brief Construct a new Tahu Client object
      * 
      * @param handler 
      * @param options 
      */
-    TahuBroker(BrokerEventHandler *handler, BrokerOptions* options);
+    TahuClient(ClientEventHandler *handler, ClientOptions* options);
     /**
-     * @brief Destroy the Tahu Broker object
+     * @brief Destroy the Tahu Client object
      * 
      */
-    ~TahuBroker();
+    ~TahuClient();
     /**
      * @brief 
      * 
@@ -180,4 +180,4 @@ public:
     int requestPublish(PublishRequest* publishRequest);
 };
 
-#endif /* INCLUDE_TAHUBROKER */
+#endif /* INCLUDE_TAHUCLIENT */

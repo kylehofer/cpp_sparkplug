@@ -34,7 +34,7 @@
 
 #include "Publisher.h"
 #include "Device.h"
-#include "SparkplugBroker.h"
+#include "SparkplugClient.h"
 #include <tahu.h>
 #include <vector>
 #include <queue>
@@ -54,14 +54,14 @@ enum SparkplugNodeEnableResult
 {
     ENABLE_SUCCESS = 0,
     ENABLE_INVALID_TOPICS = -1,
-    ENABLE_NO_BROKERS = -2,
-    ENABLE_BROKER_CONFIG_FAIL = -3
+    ENABLE_NO_CLIENTS = -2,
+    ENABLE_CLIENT_CONFIG_FAIL = -3
 };
 
 /**
- * @brief The Broker Mode the Node will be operating with
+ * @brief The Client Mode the Node will be operating with
  */
-enum SparkplugBrokerMode
+enum SparkplugClientMode
 {
     SINGLE, PRIMARY_HOST
 };
@@ -83,23 +83,23 @@ typedef struct
 /**
  * @brief A Class representation of a Sparkplug Node.
  * Behaves as a Publisher for publishing Sparkplug Metrics.
- * Manages a set of Brokers that are used for Publishing.
- * Can run Asynchronous with Asynchronous supported brokers.
+ * Manages a set of Clients that are used for Publishing.
+ * Can run Asynchronous with Asynchronous supported clients.
  */
-class Node : Publisher, BrokerEventHandler
+class Node : Publisher, ClientEventHandler
 {
 private:
     char* nodeBaseTopic;
     char* deviceBaseTopic;
-    BrokerTopicOptions brokerTopics;
+    ClientTopicOptions clientTopics;
     bool topicsConfigured;
     bool running;
     bool enabled;
     Device** devices;
     int8_t deviceCount;
-    SparkplugBroker* activeBroker;
-    SparkplugBrokerMode hostMode;
-    vector<SparkplugBroker*> brokers;
+    SparkplugClient* activeClient;
+    SparkplugClientMode hostMode;
+    vector<SparkplugClient*> clients;
     mutex *asyncLock;
     
     /**
@@ -108,7 +108,7 @@ private:
     void publishBirth();
     /**
      * @brief Configures the topics required for Sparkplug.
-     * These topics will be used for all brokers configured for the node
+     * These topics will be used for all clients configured for the node
      * 
      * @param groupId The Sparkplug Group ID
      * @param nodeId The Sparkplug Node ID
@@ -116,70 +116,70 @@ private:
      */
     void configureTopics(const char* groupId, const char* nodeId, const char *primaryHost);
     /**
-     * @brief Prepares a publish request for the node and sends it to the active broker
+     * @brief Prepares a publish request for the node and sends it to the active client
      * 
      * @param isBirth If the message is a birth message
-     * @return returns 0 if the request was sent to the broker successfully
+     * @return returns 0 if the request was sent to the client successfully
      */
     int publish(bool isBirth);
     /**
-     * @brief Prepares a publish request for a device and sends it to the active broker
+     * @brief Prepares a publish request for a device and sends it to the active client
      * 
      * @param device The device to use for the publish request
      * @param isBirth If the message is a birth message
-     * @return returns 0 if the request was sent to the broker successfully
+     * @return returns 0 if the request was sent to the client successfully
      */
     int publish(Device* device, bool isBirth);
     /**
-     * @brief Set the Broker Mode
+     * @brief Set the Client Mode
      * 
      * @param mode 
      */
-    void setBrokerMode(SparkplugBrokerMode mode);
+    void setClientMode(SparkplugClientMode mode);
     /**
-     * @brief Get the current Broker Mode
+     * @brief Get the current Client Mode
      * 
-     * @return SparkplugBrokerMode 
+     * @return SparkplugClientMode 
      */
-    SparkplugBrokerMode getBrokerMode();
+    SparkplugClientMode getClientMode();
     /**
-     * @brief Get the Active Broker
+     * @brief Get the Active Client
      * 
-     * @return SparkplugBroker* 
+     * @return SparkplugClient* 
      */
-    SparkplugBroker* getActiveBroker();
+    SparkplugClient* getActiveClient();
     /**
-     * @brief Set the Active Broker
+     * @brief Set the Active Client
      * 
-     * @param activeBroker 
+     * @param activeClient 
      */
-    void setActiveBroker(SparkplugBroker* activeBroker);
+    void setActiveClient(SparkplugClient* activeClient);
     /**
-     * @brief Request a broker to activate
-     * This will request the broker to subscribe to the command topics and
-     * the broker will be active when the subscriptions are successful
+     * @brief Request a client to activate
+     * This will request the client to subscribe to the command topics and
+     * the client will be active when the subscriptions are successful
      * 
-     * @param broker 
+     * @param client 
      */
-    void activateBroker(SparkplugBroker* broker);
+    void activateClient(SparkplugClient* client);
     /**
-     * @brief Request a broker to deactive.
-     * This will request the broker to unsubscribe to the command topics and
-     * the broker will be removed as the active broker
+     * @brief Request a client to deactive.
+     * This will request the client to unsubscribe to the command topics and
+     * the client will be removed as the active client
      * 
-     * @param broker 
+     * @param client 
      */
-    void deactivateBroker(SparkplugBroker* broker);
+    void deactivateClient(SparkplugClient* client);
     /**
-     * @brief Add a new broker to the Node
+     * @brief Add a new client to the Node
      * 
-     * @param broker 
-     * @return SparkplugBroker* 
+     * @param client 
+     * @return SparkplugClient* 
      */
-    SparkplugBroker* addBroker(SparkplugBroker *broker);
+    SparkplugClient* addClient(SparkplugClient *client);
     /**
-     * @brief Request all brokers to connect to a MQTT Server.
-     * Will be called every execute to assure all brokers are connected for publishing
+     * @brief Request all clients to connect to a MQTT Server.
+     * Will be called every execute to assure all clients are connected for publishing
      */
     void connect();
 protected:
@@ -207,17 +207,17 @@ public:
     Node(NodeOptions *options);
     ~Node();
     /**
-     * @brief Add a new broker to the Node
+     * @brief Add a new client to the Node
      * 
-     * @tparam T The base Class that will be added. Must extend SparkplugBroker
-     * @param options Configuration options for the SparkplugBroker
-     * @return SparkplugBroker* 
+     * @tparam T The base Class that will be added. Must extend SparkplugClient
+     * @param options Configuration options for the SparkplugClient
+     * @return SparkplugClient* 
      */
-    template <typename T> SparkplugBroker* addBroker(BrokerOptions *options) { return addBroker((SparkplugBroker*) (new T((BrokerEventHandler*) this, options))); };
+    template <typename T> SparkplugClient* addClient(ClientOptions *options) { return addClient((SparkplugClient*) (new T((ClientEventHandler*) this, options))); };
     /**
      * @brief This function enables the node so it can begin to publish Sparkplug Payloads.
-     * It will ensure the required topics have been configured, Brokers have been added to the node, 
-     * and will request all Brokers configure their clients. Must be called before any Sparkplug communications can occur.
+     * It will ensure the required topics have been configured, Clients have been added to the node, 
+     * and will request all Clients configure their clients. Must be called before any Sparkplug communications can occur.
      * 
      * @return SparkplugNodeEnableResult.ENABLE_SUCCESS if the Node was successfully enabled.
      */
@@ -228,15 +228,15 @@ public:
      */
     void begin();
     /**
-     * @brief The main execute function of the Node. It will ensure all brokers are connected. It will update the publish time left for 
-     * all the Publishers (Devices/Node). If any Publisher (Devices/Node) need to be published, then they will have Publish requests send to the Active Broker.
-     * If no brokers are available for publishing all Publishers will wait until they're ready.
+     * @brief The main execute function of the Node. It will ensure all clients are connected. It will update the publish time left for 
+     * all the Publishers (Devices/Node). If any Publisher (Devices/Node) need to be published, then they will have Publish requests send to the Active Client.
+     * If no clients are available for publishing all Publishers will wait until they're ready.
      * @param executeTime 
      * @return int32_t the minimum time before any Publisher needs to Publish again.
      */
     int32_t execute(int32_t executeTime);
     /**
-     * @brief TODO: Implement. It should switch to the next broker in the list.
+     * @brief TODO: Implement. It should switch to the next client in the list.
      * 
      * @return int 
      */
@@ -249,52 +249,52 @@ public:
      */
     void setDevices(Device** devices, int8_t deviceCount);
     /**
-     * @brief A callback function that is called by Brokers when a Publish request has been delivered.
+     * @brief A callback function that is called by Clients when a Publish request has been delivered.
      * This will mark the Publisher as publisher, resetting its publish time.
      * 
-     * @param broker The broker responsible for the delivery
+     * @param client The client responsible for the delivery
      * @param request PublishRequest
      */
-    void onDelivery(SparkplugBroker *broker, PublishRequest* request);
+    void onDelivery(SparkplugClient *client, PublishRequest* request);
     /**
-     * @brief A callback for when a broker has received a message on one of its subscribed topics. This should only occur for
+     * @brief A callback for when a client has received a message on one of its subscribed topics. This should only occur for
      * Node/Device commands, and updates to the Primary host topic (if configured). Commands are passed to the Publisher who owns the Metric.
-     * If the Node is configured for a Primary Host then the Active broker will change to match the Primary Host.
+     * If the Node is configured for a Primary Host then the Active client will change to match the Primary Host.
      * 
-     * @param broker The broker responsible for the message
+     * @param client The client responsible for the message
      * @param topicName The topic name of the message
      * @param topicLen The length of the topic string
      * @param message The SparkplugMessage struct containing the raw data
      * @return int 
      */
-    int onMessage(SparkplugBroker *broker, const char *topicName, int topicLen, SparkplugMessage* message);
+    int onMessage(SparkplugClient *client, const char *topicName, int topicLen, SparkplugMessage* message);
     /**
-     * @brief A callback when a broker has been succesfully activated. This broker will then be used as the activate broker and 
-     * messages will start publishing from this broker.
+     * @brief A callback when a client has been succesfully activated. This client will then be used as the activate client and 
+     * messages will start publishing from this client.
      * 
-     * @param broker 
+     * @param client 
      */
-    void onActive(SparkplugBroker *broker);
+    void onActive(SparkplugClient *client);
     /**
-     * @brief A callback when a broker has been succesfully deactivated.
+     * @brief A callback when a client has been succesfully deactivated.
      * 
-     * @param broker The broker responsible for the deactivation
+     * @param client The client responsible for the deactivation
      */
-    void onDeactive(SparkplugBroker *broker);
+    void onDeactive(SparkplugClient *client);
     /**
-     * @brief A callback when a broker has succesfully connected to a MQTT Host. If the node is configured without a primary host the broker
-     * will be activated as the primary broker.
+     * @brief A callback when a client has succesfully connected to a MQTT Host. If the node is configured without a primary host the client
+     * will be activated as the primary client.
      * 
-     * @param broker The broker responsible for the connection
+     * @param client The client responsible for the connection
      */
-    void onConnect(SparkplugBroker *broker);
+    void onConnect(SparkplugClient *client);
     /**
-     * @brief A callback when a broker has disconnected from a MQTT Host.
+     * @brief A callback when a client has disconnected from a MQTT Host.
      * 
-     * @param broker The broker responsible for the disconnection
+     * @param client The client responsible for the disconnection
      * @param cause The cause of the disconnection
      */
-    void onDisconnect(SparkplugBroker *broker, char *cause);
+    void onDisconnect(SparkplugClient *client, char *cause);
     using Publisher::update;
     using Publisher::getPayload;
 };

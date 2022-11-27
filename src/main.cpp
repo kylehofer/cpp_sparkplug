@@ -31,7 +31,7 @@
 
 #include "Node.h"
 #include "Device.h"
-#include "TahuBroker.h"
+#include "TahuClient.h"
 #include <iostream>
 
 int main(int argc, char *argv[])
@@ -44,8 +44,8 @@ int main(int argc, char *argv[])
 
     Node node = Node(&nodeOptions);
 
-    cout << "Creating Broker Options\n";
-    BrokerOptions options = {
+    cout << "Creating Client Options\n";
+    ClientOptions options = {
         .address = "",
         .clientId = "unique_id",
         .username = NULL,
@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
         .timeout = 10000
     };
 
-    node.addBroker<TahuBroker>(&options);
+    node.addClient<TahuClient>(&options);
 
     Device device = Device("MyDevice", 1);
 

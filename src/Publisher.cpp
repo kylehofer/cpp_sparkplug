@@ -62,19 +62,6 @@ int32_t Publisher::update(int32_t elapsed)
     return nextPublish;
 }
 
-int32_t Publisher::update(int32_t elapsed, org_eclipse_tahu_protobuf_Payload** payload)
-{
-    nextPublish -= elapsed;
-
-    if (nextPublish <= 0)
-    {
-        *payload = canPublish() ? getPayload(false) : NULL;
-        nextPublish = publishPeriod;
-    }
-
-    return nextPublish;
-}
-
 void Publisher::published()
 {
     state = IDLE;

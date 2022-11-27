@@ -97,7 +97,7 @@ public:
      */
     int32_t update(int32_t elapsed);
     /**
-     * @brief Callback used to tell the Publisher that its publish request has been resolved by the broker.
+     * @brief Callback used to tell the Publisher that its publish request has been resolved by the client.
      */
     void published();
     /**

@@ -1,5 +1,5 @@
 /*
- * File: SparkplugBroker.cpp
+ * File: SparkplugClient.cpp
  * Project: cpp_sparkplug
  * Created Date: Friday November 18th 2022
  * Author: Kyle Hofer
@@ -29,26 +29,26 @@
  * HISTORY:
  */
 
-#include "SparkplugBroker.h"
+#include "SparkplugClient.h"
 #include <iostream>
 
 using namespace std;
 
-#define SPARKPLUGBROKER_LOGGER cout << "Sparkplug Broker: "
+#define SPARKPLUGCLIENT_LOGGER cout << "Sparkplug Client: "
 
-SparkplugBroker::SparkplugBroker() : SparkplugBroker(NULL, NULL) { }
+SparkplugClient::SparkplugClient() : SparkplugClient(NULL, NULL) { }
 
-SparkplugBroker::SparkplugBroker(BrokerEventHandler *handler, BrokerOptions* options)
+SparkplugClient::SparkplugClient(ClientEventHandler *handler, ClientOptions* options)
  : options(options), stateMutex(new mutex), state(DISCONNECTED), isPrimary(false), handler(handler), configured(false)
 {
 }
 
-SparkplugBroker::~SparkplugBroker()
+SparkplugClient::~SparkplugClient()
 {
     delete stateMutex;
 }
 
-int SparkplugBroker::configure(BrokerTopicOptions *topics)
+int SparkplugClient::configure(ClientTopicOptions *topics)
 {
     int returnCode;
 
@@ -56,13 +56,13 @@ int SparkplugBroker::configure(BrokerTopicOptions *topics)
 
     if (returnCode < 0)
     {
-        SPARKPLUGBROKER_LOGGER "Error configuring client\n";
+        SPARKPLUGCLIENT_LOGGER "Error configuring client\n";
         return returnCode;
     }
 
     if (topics == NULL)
     {
-        SPARKPLUGBROKER_LOGGER "Error: Broker topics are not defined.\n";
+        SPARKPLUGCLIENT_LOGGER "Error: Client topics are not defined.\n";
         return -1;
     }
 
@@ -72,7 +72,7 @@ int SparkplugBroker::configure(BrokerTopicOptions *topics)
     return 0;
 }
 
-int SparkplugBroker::activate()
+int SparkplugClient::activate()
 {
     if (getPrimary())
     {
@@ -94,7 +94,7 @@ int SparkplugBroker::activate()
     return 0;
 }
 
-int SparkplugBroker::deactivate()
+int SparkplugClient::deactivate()
 {
     if (!getPrimary())
     {
@@ -116,7 +116,7 @@ int SparkplugBroker::deactivate()
     return 0;
 }
 
-int SparkplugBroker::connect()
+int SparkplugClient::connect()
 {
     if (getState() != DISCONNECTED)
     {
@@ -126,7 +126,7 @@ int SparkplugBroker::connect()
 
     if (!configured)
     {
-        SPARKPLUGBROKER_LOGGER << "Cannot connect broker as it has not been configured\n";
+        SPARKPLUGCLIENT_LOGGER << "Cannot connect client as it has not been configured\n";
         return -1;
     }
 
@@ -143,7 +143,7 @@ int SparkplugBroker::connect()
     return 0;
 }
 
-int SparkplugBroker::disconnect()
+int SparkplugClient::disconnect()
 {
     if (getState() == DISCONNECTED)
     {
@@ -159,18 +159,18 @@ int SparkplugBroker::disconnect()
     {
         // TODO: Disconnect Failure
         // return returnCode;
-        SPARKPLUGBROKER_LOGGER "Failed to disconnect, possibly already disconnected\n";
+        SPARKPLUGCLIENT_LOGGER "Failed to disconnect, possibly already disconnected\n";
     }
     return 0;
 }
 
-BrokerState SparkplugBroker::getState()
+ClientState SparkplugClient::getState()
 {
     lock_guard<mutex> lock(*stateMutex);
     return state;
 }
 
-int SparkplugBroker::encodePayload(org_eclipse_tahu_protobuf_Payload* payload, uint8_t** buffer)
+int SparkplugClient::encodePayload(org_eclipse_tahu_protobuf_Payload* payload, uint8_t** buffer)
 {
     size_t length = MAX_BUFFER_LENGTH;
     *buffer = (uint8_t *)malloc(length * sizeof(uint8_t));
@@ -178,37 +178,37 @@ int SparkplugBroker::encodePayload(org_eclipse_tahu_protobuf_Payload* payload, u
     return message_length;
 }
 
-void SparkplugBroker::destroyRequest(PublishRequest* publishRequest)
+void SparkplugClient::destroyRequest(PublishRequest* publishRequest)
 {
     free(publishRequest->topic);
     free(publishRequest);
 }
 
-void SparkplugBroker::setState(BrokerState state)
+void SparkplugClient::setState(ClientState state)
 {
     lock_guard<mutex> lock(*stateMutex);
     this->state = state;
 }
 
-void SparkplugBroker::setPrimary(bool isPrimary)
+void SparkplugClient::setPrimary(bool isPrimary)
 {
     lock_guard<mutex> lock(*stateMutex);
     this->isPrimary = isPrimary;
 }
 
-bool SparkplugBroker::getPrimary()
+bool SparkplugClient::getPrimary()
 {
     lock_guard<mutex> lock(*stateMutex);
     return isPrimary;
 }
 
-int SparkplugBroker::publish(PublishRequest* publishRequest)
+int SparkplugClient::publish(PublishRequest* publishRequest)
 {
     lock_guard<mutex> lock(publishMutex);
     
     if (getState() == DISCONNECTED)
     {
-        SPARKPLUGBROKER_LOGGER "Cannot publish payloads while disconnected\n";
+        SPARKPLUGCLIENT_LOGGER "Cannot publish payloads while disconnected\n";
         return -1;
     }
 
@@ -236,7 +236,7 @@ int SparkplugBroker::publish(PublishRequest* publishRequest)
     return returnCode;
 }
 
-void SparkplugBroker::activated()
+void SparkplugClient::activated()
 {
     if (!getPrimary())
     {
@@ -245,7 +245,7 @@ void SparkplugBroker::activated()
     handler->onActive(this);
 }
 
-void SparkplugBroker::connected()
+void SparkplugClient::connected()
 {
     setState(CONNECTED);
     handler->onConnect(this);
@@ -255,7 +255,7 @@ void SparkplugBroker::connected()
     }
 }
 
-void SparkplugBroker::disconnected(char *cause)
+void SparkplugClient::disconnected(char *cause)
 {
     setState(DISCONNECTED);
     handler->onDisconnect(this, cause);

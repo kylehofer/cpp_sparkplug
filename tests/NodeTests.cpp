@@ -31,20 +31,20 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "MockSparkplugBroker.h"
+#include "MockSparkplugClient.h"
 #include "Node.h"
 
 
-const char BROKER_ADDRESS[] = "tcp://192.168.1.20:1883";
-const char BROKER_CLIENT_ID[] = "unique_id";
+const char CLIENT_ADDRESS[] = "tcp://192.168.1.20:1883";
+const char CLIENT_CLIENT_ID[] = "unique_id";
 
 using ::testing::Mock;
 using ::testing::NotNull;
 using ::testing::AtLeast;
 using ::testing::Return;
 
-TEST(NodeTests, addBroker) {
-    MockSparkplugBroker *mockBrocker1, *mockBrocker2;
+TEST(NodeTests, addClient) {
+    MockSparkplugClient *mockClient1, *mockClient2;
 
     
     NodeOptions nodeOptions = {
@@ -54,9 +54,9 @@ TEST(NodeTests, addBroker) {
     Node node = Node(&nodeOptions);
 
 
-    BrokerOptions brokerOptions1 = {
-        .address = BROKER_ADDRESS,
-        .clientId = BROKER_CLIENT_ID,
+    ClientOptions clientOptions1 = {
+        .address = CLIENT_ADDRESS,
+        .clientId = CLIENT_CLIENT_ID,
         .username = NULL,
         .password = NULL,
         .connectTimeout = 60,
@@ -65,9 +65,9 @@ TEST(NodeTests, addBroker) {
         .timeout = 10000
     };
 
-    BrokerOptions brokerOptions2 = {
-        .address = BROKER_ADDRESS,
-        .clientId = BROKER_CLIENT_ID,
+    ClientOptions clientOptions2 = {
+        .address = CLIENT_ADDRESS,
+        .clientId = CLIENT_CLIENT_ID,
         .username = NULL,
         .password = NULL,
         .connectTimeout = 60,
@@ -76,39 +76,39 @@ TEST(NodeTests, addBroker) {
         .timeout = 10000
     };
 
-    BrokerTopicOptions *topics;
+    ClientTopicOptions *topics;
 
-    mockBrocker1 = (MockSparkplugBroker*) node.addBroker<MockSparkplugBroker>(&brokerOptions1);
-    mockBrocker2 = (MockSparkplugBroker*) node.addBroker<MockSparkplugBroker>(&brokerOptions2);
+    mockClient1 = (MockSparkplugClient*) node.addClient<MockSparkplugClient>(&clientOptions1);
+    mockClient2 = (MockSparkplugClient*) node.addClient<MockSparkplugClient>(&clientOptions2);
 
 
-    EXPECT_CALL(*mockBrocker1, configureClient(&brokerOptions1)).WillOnce([mockBrocker1](BrokerOptions *options) {
+    EXPECT_CALL(*mockClient1, configureClient(&clientOptions1)).WillOnce([mockClient1](ClientOptions *options) {
         return 0;
     });
 
 
-    EXPECT_CALL(*mockBrocker2, configureClient(&brokerOptions2)).WillOnce([mockBrocker2](BrokerOptions *options) {
+    EXPECT_CALL(*mockClient2, configureClient(&clientOptions2)).WillOnce([mockClient2](ClientOptions *options) {
         return 0;
     });
 
     EXPECT_EQ(node.enable(), ENABLE_SUCCESS);
 
-    topics = mockBrocker1->getTopics();
+    topics = mockClient1->getTopics();
 
     EXPECT_STREQ(topics->nodeCommandTopic, "spBv1.0/GroupId/NCMD/NodeId");
     EXPECT_STREQ(topics->deviceCommandTopic, "spBv1.0/GroupId/DCMD/NodeId/+");
     EXPECT_EQ(topics->primaryHostTopic, nullptr);
 
-    topics = mockBrocker2->getTopics();
+    topics = mockClient2->getTopics();
 
     EXPECT_STREQ(topics->nodeCommandTopic, "spBv1.0/GroupId/NCMD/NodeId");
     EXPECT_STREQ(topics->deviceCommandTopic, "spBv1.0/GroupId/DCMD/NodeId/+");
     EXPECT_EQ(topics->primaryHostTopic, nullptr);
 }
 
-TEST(NodeTests, addPrimaryBrokers) {
-    MockSparkplugBroker *mockBrocker1, *mockBrocker2;
-    BrokerTopicOptions* topics;
+TEST(NodeTests, addPrimaryClients) {
+    MockSparkplugClient *mockClient1, *mockClient2;
+    ClientTopicOptions* topics;
 
     NodeOptions nodeOptions = {
         "GroupId", "NodeId", "PrimaryHost", 5
@@ -116,9 +116,9 @@ TEST(NodeTests, addPrimaryBrokers) {
 
     Node node = Node(&nodeOptions);
 
-    BrokerOptions brokerOptions1 = {
-        .address = BROKER_ADDRESS,
-        .clientId = BROKER_CLIENT_ID,
+    ClientOptions clientOptions1 = {
+        .address = CLIENT_ADDRESS,
+        .clientId = CLIENT_CLIENT_ID,
         .username = NULL,
         .password = NULL,
         .connectTimeout = 60,
@@ -127,9 +127,9 @@ TEST(NodeTests, addPrimaryBrokers) {
         .timeout = 10000
     };
 
-    BrokerOptions brokerOptions2 = {
-        .address = BROKER_ADDRESS,
-        .clientId = BROKER_CLIENT_ID,
+    ClientOptions clientOptions2 = {
+        .address = CLIENT_ADDRESS,
+        .clientId = CLIENT_CLIENT_ID,
         .username = NULL,
         .password = NULL,
         .connectTimeout = 60,
@@ -139,28 +139,28 @@ TEST(NodeTests, addPrimaryBrokers) {
     };
 
 
-    mockBrocker1 = (MockSparkplugBroker*) node.addBroker<MockSparkplugBroker>(&brokerOptions1);
-    mockBrocker2 = (MockSparkplugBroker*) node.addBroker<MockSparkplugBroker>(&brokerOptions2);
+    mockClient1 = (MockSparkplugClient*) node.addClient<MockSparkplugClient>(&clientOptions1);
+    mockClient2 = (MockSparkplugClient*) node.addClient<MockSparkplugClient>(&clientOptions2);
 
 
-    EXPECT_CALL(*mockBrocker1, configureClient(&brokerOptions1)).WillOnce([mockBrocker1](BrokerOptions *options) {
+    EXPECT_CALL(*mockClient1, configureClient(&clientOptions1)).WillOnce([mockClient1](ClientOptions *options) {
         return 0;
     });
 
 
-    EXPECT_CALL(*mockBrocker2, configureClient(&brokerOptions2)).WillOnce([mockBrocker2](BrokerOptions *options) {
+    EXPECT_CALL(*mockClient2, configureClient(&clientOptions2)).WillOnce([mockClient2](ClientOptions *options) {
         return 0;
     });
 
     EXPECT_EQ(node.enable(), ENABLE_SUCCESS);
 
-    topics = mockBrocker1->getTopics();
+    topics = mockClient1->getTopics();
 
     EXPECT_STREQ(topics->nodeCommandTopic, "spBv1.0/GroupId/NCMD/NodeId");
     EXPECT_STREQ(topics->deviceCommandTopic, "spBv1.0/GroupId/DCMD/NodeId/+");
     EXPECT_STREQ(topics->primaryHostTopic, "STATE/PrimaryHost");
 
-    topics = mockBrocker2->getTopics();
+    topics = mockClient2->getTopics();
 
     EXPECT_STREQ(topics->nodeCommandTopic, "spBv1.0/GroupId/NCMD/NodeId");
     EXPECT_STREQ(topics->deviceCommandTopic, "spBv1.0/GroupId/DCMD/NodeId/+");
@@ -188,12 +188,12 @@ TEST(NodeTests, enable) {
     Node nodeNoNodeId = Node(&nodeNoNodeIdOptions);
     Node nodeNoHost = Node(&nodeNoHostOptions);
     Node node = Node(&nodeOptions);
-    Node nodeNoBroker = Node(&nodeOptions);
+    Node nodeNoClient = Node(&nodeOptions);
     Node nodeFailClientConfig = Node(&nodeOptions);
 
-    BrokerOptions brokerOptions = {
-        .address = BROKER_ADDRESS,
-        .clientId = BROKER_CLIENT_ID,
+    ClientOptions clientOptions = {
+        .address = CLIENT_ADDRESS,
+        .clientId = CLIENT_CLIENT_ID,
         .username = NULL,
         .password = NULL,
         .connectTimeout = 60,
@@ -202,25 +202,25 @@ TEST(NodeTests, enable) {
         .timeout = 10000
     };
 
-    MockSparkplugBroker *mockBrocker1, *mockBrocker2, *mockBrocker3;
+    MockSparkplugClient *mockClient1, *mockClient2, *mockClient3;
 
-    nodeNoGroupId.addBroker<MockSparkplugBroker>(&brokerOptions);
-    nodeNoNodeId.addBroker<MockSparkplugBroker>(&brokerOptions);
-    mockBrocker1 = (MockSparkplugBroker*) nodeNoHost.addBroker<MockSparkplugBroker>(&brokerOptions);
-    mockBrocker2 = (MockSparkplugBroker*) node.addBroker<MockSparkplugBroker>(&brokerOptions);
-    mockBrocker3 = (MockSparkplugBroker*) nodeFailClientConfig.addBroker<MockSparkplugBroker>(&brokerOptions);
-    // node.addBroker<MockSparkplugBroker>(&brokerOptions);
+    nodeNoGroupId.addClient<MockSparkplugClient>(&clientOptions);
+    nodeNoNodeId.addClient<MockSparkplugClient>(&clientOptions);
+    mockClient1 = (MockSparkplugClient*) nodeNoHost.addClient<MockSparkplugClient>(&clientOptions);
+    mockClient2 = (MockSparkplugClient*) node.addClient<MockSparkplugClient>(&clientOptions);
+    mockClient3 = (MockSparkplugClient*) nodeFailClientConfig.addClient<MockSparkplugClient>(&clientOptions);
+    // node.addClient<MockSparkplugClient>(&clientOptions);
 
-    EXPECT_CALL(*mockBrocker1, configureClient(&brokerOptions)).WillOnce([mockBrocker1](BrokerOptions *options) {
+    EXPECT_CALL(*mockClient1, configureClient(&clientOptions)).WillOnce([mockClient1](ClientOptions *options) {
         return 0;
     });
 
 
-    EXPECT_CALL(*mockBrocker2, configureClient(&brokerOptions)).WillOnce([mockBrocker2](BrokerOptions *options) {
+    EXPECT_CALL(*mockClient2, configureClient(&clientOptions)).WillOnce([mockClient2](ClientOptions *options) {
         return 0;
     });
 
-    EXPECT_CALL(*mockBrocker3, configureClient(&brokerOptions)).WillOnce([mockBrocker2](BrokerOptions *options) {
+    EXPECT_CALL(*mockClient3, configureClient(&clientOptions)).WillOnce([mockClient2](ClientOptions *options) {
         return -1;
     });
 
@@ -228,8 +228,8 @@ TEST(NodeTests, enable) {
     EXPECT_EQ(nodeNoNodeId.enable(), ENABLE_INVALID_TOPICS);
     EXPECT_EQ(nodeNoHost.enable(), ENABLE_SUCCESS);
     EXPECT_EQ(node.enable(), ENABLE_SUCCESS);
-    EXPECT_EQ(nodeNoBroker.enable(), ENABLE_NO_BROKERS);
-    EXPECT_EQ(nodeFailClientConfig.enable(), ENABLE_BROKER_CONFIG_FAIL);
+    EXPECT_EQ(nodeNoClient.enable(), ENABLE_NO_CLIENTS);
+    EXPECT_EQ(nodeFailClientConfig.enable(), ENABLE_CLIENT_CONFIG_FAIL);
 
 }
 
@@ -240,9 +240,9 @@ TEST(NodeTests, executeHappyPrimaryTest) {
 
     Node node = Node(&nodeOptions);
 
-    BrokerOptions brokerOptions = {
-        .address = BROKER_ADDRESS,
-        .clientId = BROKER_CLIENT_ID,
+    ClientOptions clientOptions = {
+        .address = CLIENT_ADDRESS,
+        .clientId = CLIENT_CLIENT_ID,
         .username = NULL,
         .password = NULL,
         .connectTimeout = 60,
@@ -251,63 +251,63 @@ TEST(NodeTests, executeHappyPrimaryTest) {
         .timeout = 10000
     };
 
-    MockSparkplugBroker *mockBrocker;
+    MockSparkplugClient *mockClient;
 
-    mockBrocker = (MockSparkplugBroker*) node.addBroker<MockSparkplugBroker>(&brokerOptions);
+    mockClient = (MockSparkplugClient*) node.addClient<MockSparkplugClient>(&clientOptions);
 
-    EXPECT_CALL(*mockBrocker, configureClient(&brokerOptions)).WillOnce([mockBrocker](BrokerOptions *options) {
+    EXPECT_CALL(*mockClient, configureClient(&clientOptions)).WillOnce([mockClient](ClientOptions *options) {
         return 0;
     });
 
-    EXPECT_CALL(*mockBrocker, clientConnect()).WillOnce([mockBrocker]() {
+    EXPECT_CALL(*mockClient, clientConnect()).WillOnce([mockClient]() {
         return 0;
     });
 
-    EXPECT_NE(mockBrocker, nullptr);
+    EXPECT_NE(mockClient, nullptr);
 
     EXPECT_EQ(node.execute(0), -1);
 
     EXPECT_EQ(node.enable(), ENABLE_SUCCESS);
 
-    EXPECT_EQ(node.execute(0), 1) << "No Brokers are connected, we should expect the idle time.";
+    EXPECT_EQ(node.execute(0), 1) << "No Clients are connected, we should expect the idle time.";
 
-    EXPECT_CALL(*mockBrocker, subscribeToPrimaryHost()).WillOnce([mockBrocker]() {
+    EXPECT_CALL(*mockClient, subscribeToPrimaryHost()).WillOnce([mockClient]() {
         return 0;
     });
 
-    mockBrocker->connect();
+    mockClient->connect();
 
-    EXPECT_EQ(node.execute(0), 1) << "Broker is connected, however it is not active yet.";
+    EXPECT_EQ(node.execute(0), 1) << "Client is connected, however it is not active yet.";
 
-    mockBrocker->active();
+    mockClient->active();
 
-    EXPECT_EQ(node.execute(0), 1) << "Broker is connected, however the node is still waiting for primary host to activate the broker.";
+    EXPECT_EQ(node.execute(0), 1) << "Client is connected, however the node is still waiting for primary host to activate the client.";
 
     SparkplugMessage message = {
         .payloadlen = 7,
         .payload = (char*) "ONLINE"
     };
 
-    EXPECT_CALL(*mockBrocker, subscribeToCommands()).WillOnce([mockBrocker]() {
+    EXPECT_CALL(*mockClient, subscribeToCommands()).WillOnce([mockClient]() {
         return 0;
     });
 
     const char primaryHostTopic[] = "STATE/PrimaryHost";
 
-    node.onMessage(mockBrocker, primaryHostTopic, 18, &message);
+    node.onMessage(mockClient, primaryHostTopic, 18, &message);
 
-    EXPECT_EQ(node.execute(0), 1) << "Broker is connected, Primary Host message received, waiting for command subscription";
+    EXPECT_EQ(node.execute(0), 1) << "Client is connected, Primary Host message received, waiting for command subscription";
 
     PublishRequest* requestedPublish;
 
     // We should expect a birth message
-    EXPECT_CALL(*mockBrocker, requestPublish(NotNull())).WillOnce([&](PublishRequest* publishRequest) {
+    EXPECT_CALL(*mockClient, requestPublish(NotNull())).WillOnce([&](PublishRequest* publishRequest) {
         requestedPublish = publishRequest;
         return 0;
     });
 
     // Sending our activation back, aka command subscription success
-    mockBrocker->active();
+    mockClient->active();
 
     EXPECT_NE(requestedPublish, nullptr);
     EXPECT_EQ(requestedPublish->isBirth, true);
@@ -315,24 +315,24 @@ TEST(NodeTests, executeHappyPrimaryTest) {
     EXPECT_STREQ(requestedPublish->topic, "spBv1.0/GroupId/NBIRTH/NodeId");
 
     // We should expect our brocket to be requested to send this request
-    EXPECT_CALL(*mockBrocker, publishMessage(requestedPublish->topic, NotNull(), 9, &requestedPublish->token))
-    .WillOnce([mockBrocker](const char* topic, uint8_t* buffer, size_t length, DeliveryToken* token) {
+    EXPECT_CALL(*mockClient, publishMessage(requestedPublish->topic, NotNull(), 9, &requestedPublish->token))
+    .WillOnce([mockClient](const char* topic, uint8_t* buffer, size_t length, DeliveryToken* token) {
         return 0;
     });
 
-    mockBrocker->publish(requestedPublish);
+    mockClient->publish(requestedPublish);
 
-    EXPECT_EQ(node.execute(0), 5) << "Broker is connected, Primary Host received, Commands Subscribed.";
+    EXPECT_EQ(node.execute(0), 5) << "Client is connected, Primary Host received, Commands Subscribed.";
 
     EXPECT_EQ(node.execute(2), 5) << "A live publish should be active, timer should be held.";
 
     EXPECT_EQ(node.execute(5), 5) << "A live publish should be active, timer should be held.";
 
-    node.onDelivery(mockBrocker, requestedPublish);
+    node.onDelivery(mockClient, requestedPublish);
 
     EXPECT_EQ(node.execute(2), 3) << "Publish has been acknowledged, time should decrement now";
 
-    SparkplugBroker::destroyRequest(requestedPublish);
+    SparkplugClient::destroyRequest(requestedPublish);
 
     EXPECT_EQ(node.execute(5), 5) << "No new data to publish, so timer should lock at 5";
 }
@@ -344,9 +344,9 @@ TEST(NodeTests, executeHappyTest) {
 
     Node node = Node(&nodeOptions);
 
-    BrokerOptions brokerOptions = {
-        .address = BROKER_ADDRESS,
-        .clientId = BROKER_CLIENT_ID,
+    ClientOptions clientOptions = {
+        .address = CLIENT_ADDRESS,
+        .clientId = CLIENT_CLIENT_ID,
         .username = NULL,
         .password = NULL,
         .connectTimeout = 60,
@@ -355,37 +355,37 @@ TEST(NodeTests, executeHappyTest) {
         .timeout = 10000
     };
 
-    MockSparkplugBroker *mockBrocker;
+    MockSparkplugClient *mockClient;
 
-    mockBrocker = (MockSparkplugBroker*) node.addBroker<MockSparkplugBroker>(&brokerOptions);
+    mockClient = (MockSparkplugClient*) node.addClient<MockSparkplugClient>(&clientOptions);
 
-    EXPECT_CALL(*mockBrocker, configureClient(&brokerOptions)).WillOnce([mockBrocker](BrokerOptions *options) {
+    EXPECT_CALL(*mockClient, configureClient(&clientOptions)).WillOnce([mockClient](ClientOptions *options) {
         return 0;
     });
 
-    EXPECT_CALL(*mockBrocker, clientConnect()).WillOnce([mockBrocker]() {
+    EXPECT_CALL(*mockClient, clientConnect()).WillOnce([mockClient]() {
         return 0;
     });
 
-    EXPECT_NE(mockBrocker, nullptr);
+    EXPECT_NE(mockClient, nullptr);
 
     EXPECT_EQ(node.execute(0), -1);
 
     EXPECT_EQ(node.enable(), ENABLE_SUCCESS);
 
-    EXPECT_EQ(node.execute(0), 1) << "No Brokers are connected, we should expect the idle time.";
+    EXPECT_EQ(node.execute(0), 1) << "No Clients are connected, we should expect the idle time.";
 
-    // Should not be called as it is not a primary host broker
-    EXPECT_CALL(*mockBrocker, subscribeToPrimaryHost()).Times(0);
+    // Should not be called as it is not a primary host client
+    EXPECT_CALL(*mockClient, subscribeToPrimaryHost()).Times(0);
 
-    // A non Primary host broker should subscribe instantly
-    EXPECT_CALL(*mockBrocker, subscribeToCommands()).WillOnce([mockBrocker]() {
+    // A non Primary host client should subscribe instantly
+    EXPECT_CALL(*mockClient, subscribeToCommands()).WillOnce([mockClient]() {
         return 0;
     });
 
-    mockBrocker->connect();
+    mockClient->connect();
 
-    EXPECT_EQ(node.execute(0), 1) << "Broker is connected, and waiting for commands to subscribe.";
+    EXPECT_EQ(node.execute(0), 1) << "Client is connected, and waiting for commands to subscribe.";
 
     SparkplugMessage message = {
         .payloadlen = 7,
@@ -395,20 +395,20 @@ TEST(NodeTests, executeHappyTest) {
     const char primaryHostTopic[] = "STATE/PrimaryHost";
 
     // Sending message should have no affect
-    node.onMessage(mockBrocker, primaryHostTopic, 18, &message);
+    node.onMessage(mockClient, primaryHostTopic, 18, &message);
 
-    EXPECT_EQ(node.execute(0), 1) << "Broker is connected, Primary Host message received, waiting for command subscription";
+    EXPECT_EQ(node.execute(0), 1) << "Client is connected, Primary Host message received, waiting for command subscription";
 
     PublishRequest* requestedPublish;
 
     // We should expect a birth message
-    EXPECT_CALL(*mockBrocker, requestPublish(NotNull())).WillOnce([&](PublishRequest* publishRequest) {
+    EXPECT_CALL(*mockClient, requestPublish(NotNull())).WillOnce([&](PublishRequest* publishRequest) {
         requestedPublish = publishRequest;
         return 0;
     });
 
     // Sending our activation back, aka command subscription success
-    mockBrocker->active();
+    mockClient->active();
 
     EXPECT_NE(requestedPublish, nullptr);
     EXPECT_EQ(requestedPublish->isBirth, true);
@@ -416,24 +416,24 @@ TEST(NodeTests, executeHappyTest) {
     EXPECT_STREQ(requestedPublish->topic, "spBv1.0/GroupId/NBIRTH/NodeId");
 
     // We should expect our brocket to be requested to send this request
-    EXPECT_CALL(*mockBrocker, publishMessage(requestedPublish->topic, NotNull(), 9, &requestedPublish->token))
-    .WillOnce([mockBrocker](const char* topic, uint8_t* buffer, size_t length, DeliveryToken* token) {
+    EXPECT_CALL(*mockClient, publishMessage(requestedPublish->topic, NotNull(), 9, &requestedPublish->token))
+    .WillOnce([mockClient](const char* topic, uint8_t* buffer, size_t length, DeliveryToken* token) {
         return 0;
     });
 
-    mockBrocker->publish(requestedPublish);
+    mockClient->publish(requestedPublish);
 
-    EXPECT_EQ(node.execute(0), 5) << "Broker is connected, Commands Subscribed.";
+    EXPECT_EQ(node.execute(0), 5) << "Client is connected, Commands Subscribed.";
 
     EXPECT_EQ(node.execute(2), 5) << "A live publish should be active, timer should be held.";
 
     EXPECT_EQ(node.execute(5), 5) << "A live publish should be active, timer should be held.";
 
-    node.onDelivery(mockBrocker, requestedPublish);
+    node.onDelivery(mockClient, requestedPublish);
 
     EXPECT_EQ(node.execute(2), 3) << "Publish has been acknowledged, time should decrement now";
 
-    SparkplugBroker::destroyRequest(requestedPublish);
+    SparkplugClient::destroyRequest(requestedPublish);
 
     EXPECT_EQ(node.execute(5), 5) << "No new data to publish, so timer should lock at 5";
 }
