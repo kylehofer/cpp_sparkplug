@@ -38,6 +38,10 @@
 
 using namespace std;
 
+/**
+ * @brief 
+ * 
+ */
 class TahuBroker : SparkplugBroker
 {
 private:
@@ -45,32 +49,134 @@ private:
     MQTTAsync_connectOptions connectionOptions;
     queue<PublishRequest*> publishQueue;
     std::mutex queueMutex;
+    /**
+     * @brief 
+     * 
+     */
     void publishFromQueue();
+    /**
+     * @brief 
+     * 
+     */
     void dumpQueue();
 
 protected:
     int clientConnect();
+    /**
+     * @brief 
+     * 
+     * @return int 
+     */
     int clientDisconnect();
+    /**
+     * @brief 
+     * 
+     * @return int 
+     */
     int subscribeToPrimaryHost();
+    /**
+     * @brief 
+     * 
+     * @return int 
+     */
     int subscribeToCommands();
+    /**
+     * @brief 
+     * 
+     * @return int 
+     */
     int unsubscribeToCommands();
+    /**
+     * @brief 
+     * 
+     * @param topic 
+     * @param buffer 
+     * @param length 
+     * @param token 
+     * @return int 
+     */
     int publishMessage(const char* topic, uint8_t* buffer, size_t length, DeliveryToken* token);
+    /**
+     * @brief 
+     * 
+     * @param options 
+     * @return int 
+     */
     int configureClient(BrokerOptions* options);
+    /**
+     * @brief Set the Primary object
+     * 
+     * @param primary 
+     * @return true 
+     * @return false 
+     */
     bool setPrimary(bool primary);
     using SparkplugBroker::getHandler;
     using SparkplugBroker::setState;
     using SparkplugBroker::getState;
     using SparkplugBroker::getPrimary;
 public:
+    /**
+     * @brief Construct a new Tahu Broker object
+     * 
+     */
     TahuBroker();
+    /**
+     * @brief Construct a new Tahu Broker object
+     * 
+     * @param handler 
+     * @param options 
+     */
     TahuBroker(BrokerEventHandler *handler, BrokerOptions* options);
+    /**
+     * @brief Destroy the Tahu Broker object
+     * 
+     */
     ~TahuBroker();
+    /**
+     * @brief 
+     * 
+     * @param token 
+     */
     void onDelivery(DeliveryToken token);
+    /**
+     * @brief 
+     * 
+     * @param token 
+     */
     void onDeliveryFailure(DeliveryToken token);
+    /**
+     * @brief 
+     * 
+     */
     void onConnect();
+    /**
+     * @brief 
+     * 
+     * @param responseCode 
+     */
     void onConnectFailure(int responseCode);
+    /**
+     * @brief 
+     * 
+     * @param cause 
+     */
     void onDisconnect(char *cause);
+    /**
+     * @brief 
+     * 
+     * @param topicName 
+     * @param topicLen 
+     * @param message 
+     * @return int 
+     */
     int onMessage(char *topicName, int topicLen, MQTTAsync_message *message);
+    /**
+     * @brief 
+     * 
+     * @param publishRequest 
+     * @return int 
+     */
     int requestPublish(PublishRequest* publishRequest);
 };
 

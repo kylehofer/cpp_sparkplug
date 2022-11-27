@@ -212,8 +212,6 @@ int SparkplugBroker::publish(PublishRequest* publishRequest)
         return -1;
     }
 
-    // setState(PUBLISHING_PAYLOAD);
-
     org_eclipse_tahu_protobuf_Payload* payload = publishRequest->publisher->getPayload(publishRequest->isBirth);
 
     uint8_t* buffer;

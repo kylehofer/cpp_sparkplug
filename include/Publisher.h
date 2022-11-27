@@ -35,11 +35,20 @@
 #include "Metric.h"
 #include <tahu.h>
 
+/**
+ * @brief An enum of all Publisher States
+ * 
+ */
 enum PublisherState
 {
     IDLE, CAN_PUBLISH, PUBLISHING
 };
 
+/**
+ * @brief A class representing a Sparkplug Publisher (Node/Device)
+ * This Class contains a set of Metrics and a configured Publish period that
+ * determines the minimum time per publish.
+ */
 class Publisher
 {
 private:
@@ -50,18 +59,61 @@ private:
 protected:
     Metric **metrics;
     int16_t metricCount;
+    /**
+     * @brief Initializes a base payload for adding metrics to.
+     * NOTE: Memory is allocated for the payload, and must be freed by the caller of this function.
+     * 
+     * @param isBirth 
+     * @return org_eclipse_tahu_protobuf_Payload* 
+     */
     org_eclipse_tahu_protobuf_Payload* initializePayload(bool isBirth);
 
 public:
+    /**
+     * @brief Construct a new Publisher
+     * 
+     */
     Publisher();
+    /**
+     * @brief Construct a new Publisher
+     * 
+     * @param publishPeriod The minimum time required before sending messages
+     */
     Publisher(int publishPeriod);
+    /**
+     * @brief Set the Metrics on the Publisher
+     * 
+     * @param metrics An array of Metrics that will be handled by this Publisher
+     * @param metricCount The number of Metrics being added
+     */
     void setMetrics(Metric** metrics, int16_t metricCount);
+    /**
+     * @brief Used to update the publishing timer for the Publisher. The amount of time supplied will be deducted from the remaining time before
+     * the next publish. If more time has passed than the publish period then the Publisher will be marked as able to publish. The value returned
+     * will be the remaining time before the next publish. If the Publisher is able to publish it will then return its publish period.
+     * 
+     * @param elapsed The amount of time to deduct from the remaining publishing time.
+     * @return int32_t 
+     */
     int32_t update(int32_t elapsed);
-    int32_t update(int32_t elapsed, org_eclipse_tahu_protobuf_Payload** payload);
+    /**
+     * @brief Callback used to tell the Publisher that its publish request has been resolved by the broker.
+     */
     void published();
+    /**
+     * @brief Whether the Publisher is available to publish
+     * 
+     * @return true 
+     * @return false 
+     */
     bool canPublish();
-    // void handleCommand(void* payload);
+    /**
+     * @brief Get the Sparkplug Payload that will be used to publish.
+     * @param isBirth 
+     * @return org_eclipse_tahu_protobuf_Payload* 
+     */
     org_eclipse_tahu_protobuf_Payload* getPayload(bool isBirth = false);
+    // void handleCommand(void* payload);
 };
 
 #endif /* INCLUDE_PUBLISHER */

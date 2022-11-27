@@ -399,10 +399,6 @@ void Node::begin()
     }
 }
 
-void Node::stop()
-{
-}
-
 SparkplugBroker* Node::addBroker(SparkplugBroker *broker)
 {
     brokers.push_back(broker);
@@ -428,15 +424,19 @@ void Node::onDelivery(SparkplugBroker *broker, PublishRequest *request)
 
 int Node::onMessage(SparkplugBroker *broker, const char *topicName, int topicLen, SparkplugMessage *message)
 {
-    if (strstr(topicName, NCMD) != NULL)
+    if (broker == getActiveBroker())
     {
-        cout << "Node Command\n";
+        if (strstr(topicName, NCMD) != NULL)
+        {
+            cout << "Node Command\n";
+        }
+        else if (strstr(topicName, DCMD) != NULL)
+        {
+            cout << "Device Command\n";
+        }
     }
-    else if (strstr(topicName, DCMD) != NULL)
-    {
-        cout << "Device Command\n";
-    }
-    else if (brokerTopics.primaryHostTopic != NULL && strcmp(topicName, brokerTopics.primaryHostTopic) == 0)
+
+    if (brokerTopics.primaryHostTopic != NULL && strcmp(topicName, brokerTopics.primaryHostTopic) == 0)
     {
         if (strncmp((char *)message->payload, "ONLINE", message->payloadlen) == 0)
         {
@@ -446,7 +446,7 @@ int Node::onMessage(SparkplugBroker *broker, const char *topicName, int topicLen
                 activateBroker(broker);
             }
         }
-        else
+        else if (strncmp((char *)message->payload, "OFFLINE", message->payloadlen) == 0)
         {
             if (getActiveBroker() == broker)
             {
@@ -456,7 +456,6 @@ int Node::onMessage(SparkplugBroker *broker, const char *topicName, int topicLen
     }
     return 0;
 }
-
 
 void Node::onActive(SparkplugBroker *broker)
 {

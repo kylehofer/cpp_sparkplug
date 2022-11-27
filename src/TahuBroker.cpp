@@ -377,7 +377,6 @@ void TahuBroker::onDelivery(DeliveryToken token)
             handler->onDelivery(this, publishRequest);
         }
         SparkplugBroker::destroyRequest(publishRequest);
-
         publishFromQueue();
     }
     else
@@ -400,6 +399,9 @@ void TahuBroker::onDeliveryFailure(DeliveryToken token)
         if (publishRequest->retryCount >= PUBLISH_RETRIES)
         {
             publishQueue.pop();
+            {
+                handler->onDelivery(this, publishRequest);
+            }
             SparkplugBroker::destroyRequest(publishRequest);
             publishFromQueue();
         }

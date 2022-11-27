@@ -296,7 +296,7 @@ TEST(NodeTests, executeHappyPrimaryTest) {
 
     node.onMessage(mockBrocker, primaryHostTopic, 18, &message);
 
-    EXPECT_EQ(node.execute(0), 1) << "Broker is connected, Primary Host message recieved, waiting for command subscription";
+    EXPECT_EQ(node.execute(0), 1) << "Broker is connected, Primary Host message received, waiting for command subscription";
 
     PublishRequest* requestedPublish;
 
@@ -322,7 +322,7 @@ TEST(NodeTests, executeHappyPrimaryTest) {
 
     mockBrocker->publish(requestedPublish);
 
-    EXPECT_EQ(node.execute(0), 5) << "Broker is connected, Primary Host Recieved, Commands Subscribed.";
+    EXPECT_EQ(node.execute(0), 5) << "Broker is connected, Primary Host received, Commands Subscribed.";
 
     EXPECT_EQ(node.execute(2), 5) << "A live publish should be active, timer should be held.";
 
@@ -397,7 +397,7 @@ TEST(NodeTests, executeHappyTest) {
     // Sending message should have no affect
     node.onMessage(mockBrocker, primaryHostTopic, 18, &message);
 
-    EXPECT_EQ(node.execute(0), 1) << "Broker is connected, Primary Host message recieved, waiting for command subscription";
+    EXPECT_EQ(node.execute(0), 1) << "Broker is connected, Primary Host message received, waiting for command subscription";
 
     PublishRequest* requestedPublish;
 
