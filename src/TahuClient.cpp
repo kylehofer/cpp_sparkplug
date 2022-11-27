@@ -319,7 +319,7 @@ TahuClient::~TahuClient()
     SparkplugClient::~SparkplugClient();
 }
 
-bool TahuClient::setPrimary(bool isPrimary)
+void TahuClient::setPrimary(bool isPrimary)
 {
     SparkplugClient::setPrimary(isPrimary);
 
@@ -419,9 +419,9 @@ void TahuClient::onDeliveryFailure(DeliveryToken token)
 
 void TahuClient::onConnect()
 {
-    int returnCode;
-    int** tokens;
-    returnCode = MQTTAsync_getPendingTokens(client, tokens);
+    // int returnCode;
+    // int** tokens;
+    // returnCode = MQTTAsync_getPendingTokens(client, tokens);
     connected();
 }
 

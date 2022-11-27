@@ -238,8 +238,8 @@ protected:
      */
     virtual int configureClient(ClientOptions* options) = 0;
     /**
-     * @brief 
-     * 
+     * @brief Callback for when the Client has officially activated. This should occur after the subscription to the Primary
+     * Host topic. This will fire the onActive callback of the EventHandler.
      */
     void activated();
     /**
@@ -315,30 +315,30 @@ public:
     /**
      * @brief Requests the SparkplugClient to connect to the MQTT Host.
      * 
-     * @return int 
+     * @return 0 if the request was sent successfully  
      */
     int connect();
     /**
-     * @brief 
+     * @brief Requests the SparkplugClient to disconnect from the MQTT Host.
      * 
-     * @return int 
+     * @return 0 if the request was sent successfully  
      */
     int disconnect();
     /**
-     * @brief 
-     * 
-     * @param publishRequest 
-     * @return int 
+     * @brief Used to send a PublishRequest to the SparkplugClient. Implementions will handle whether the Client is asynchronous or synchronous.
+     * NOTE: It is upto the Client implementation to free the memory used by the PublishRequest.
+     * @param publishRequest
+     * @return 0 if the request was sent successfully
      */
     virtual int requestPublish(PublishRequest* publishRequest) = 0;
     /**
-     * @brief Get the State object
+     * @brief Get the current state of the Client
      * 
      * @return ClientState 
      */
     ClientState getState();
     /**
-     * @brief 
+     * @brief Frees memory used by a PublishRequest.
      * 
      * @param publishRequest 
      */

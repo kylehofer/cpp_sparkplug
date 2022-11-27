@@ -39,8 +39,8 @@
 using namespace std;
 
 /**
- * @brief 
- * 
+ * @brief An Eclipse Tahu implementation of a SparkplugClient
+ * Implements an asynchronous client and manages queues for handling requests.
  */
 class TahuClient : SparkplugClient
 {
@@ -50,129 +50,134 @@ private:
     queue<PublishRequest*> publishQueue;
     std::mutex queueMutex;
     /**
-     * @brief 
-     * 
+     * @brief Used to initiate a publish from the PublishRequest queue. If the queue is empty the Client will be set to a Connected State.
+     * If there are requests in the queue then the front item of the queue will be published and the Client will be set to a Publishing State.
      */
     void publishFromQueue();
     /**
-     * @brief 
-     * 
+     * @brief Dumps the publish queue freeing up used memory
      */
     void dumpQueue();
 
 protected:
+    /**
+     * @brief Requests the SparkplugClient to connect to the MQTT Host
+     * 
+     * @return 0 if the request was sent succesfully
+     */
     int clientConnect();
     /**
-     * @brief 
+     * @brief Requests the SparkplugClient todisconnect from the MQTT Host
      * 
-     * @return int 
+     * @return 0 if the request was sent succesfully
      */
     int clientDisconnect();
     /**
-     * @brief 
+     * @brief Requests the SparkplugClient to subscribe to the Primary Host topic
      * 
-     * @return int 
+     * @return 0 if the request was sent succesfully
      */
     int subscribeToPrimaryHost();
     /**
-     * @brief 
+     * @brief Requests the SparkplugClient to subscribe to the command topics
      * 
-     * @return int 
+     * @return 0 if the request was sent succesfully
      */
     int subscribeToCommands();
     /**
-     * @brief 
+     * @brief Requests the SparkplugClient to unsubscribe from the command topics
      * 
-     * @return int 
+     * @return 0 if the request was sent succesfully
      */
     int unsubscribeToCommands();
     /**
-     * @brief 
+     * @brief Requests the SparkplugClient to publish a buffer to a MQTT Host
      * 
-     * @param topic 
-     * @param buffer 
-     * @param length 
-     * @param token 
-     * @return int 
+     * @param topic The topic name to publish the buffer to
+     * @param buffer The buffer being published
+     * @param length The size of the buffer being published
+     * @param token A unique token that will be attached to the message being sent. Used to identify when messages are delivered by asynchronous clients
+     * @return 0 if the request was sent succesfully
      */
     int publishMessage(const char* topic, uint8_t* buffer, size_t length, DeliveryToken* token);
     /**
-     * @brief 
+     * @brief Configures an Asynchronous MQTT Client that will be used for publishing and subscribing to an MQTT host.
      * 
-     * @param options 
-     * @return int 
+     * @param options ClientOptions used to configure the client
+     * @return 0 if the client was configured successfully
      */
     int configureClient(ClientOptions* options);
     /**
-     * @brief Set the Primary object
+     * @brief Sets the SparkplugClient as the Primary Client. If set to false the PublishRequest queue will be dumped.
      * 
      * @param primary 
-     * @return true 
-     * @return false 
      */
-    bool setPrimary(bool primary);
+    void setPrimary(bool primary);
     using SparkplugClient::getHandler;
     using SparkplugClient::setState;
     using SparkplugClient::getState;
     using SparkplugClient::getPrimary;
 public:
     /**
-     * @brief Construct a new Tahu Client object
+     * @brief Construct a new Tahu MQTT Client
      * 
      */
     TahuClient();
     /**
-     * @brief Construct a new Tahu Client object
+     * @brief Construct a new Tahu MQTT Client
      * 
-     * @param handler 
-     * @param options 
+     * @param handler The Event Handler that manages the callbacks from the Client
+     * @param options The options for configuring the MQTT Client
      */
     TahuClient(ClientEventHandler *handler, ClientOptions* options);
-    /**
-     * @brief Destroy the Tahu Client object
-     * 
-     */
     ~TahuClient();
     /**
-     * @brief 
+     * @brief Callback method for when a publish has been delivered on a client.
+     * The token is used to match to a SparkplugRequest. The client will inform the EventHandler of the
+     * delivered message and then free the memory used by the Request.
+     * Finally more requests will be published if the queue contains items
      * 
-     * @param token 
+     * @param token The unique token of the request
      */
     void onDelivery(DeliveryToken token);
     /**
-     * @brief 
+     * @brief Callback method for when a publish failed delivery on the client.
+     * The Client will re-attempt to send the SparkplugRequest a few times before dumping the request.
+     * Finally more requests will be published if the queue contains items
      * 
-     * @param token 
+     * @param token The unique token of the failed request
      */
     void onDeliveryFailure(DeliveryToken token);
+
     /**
-     * @brief 
-     * 
+     * @brief Callback method when the Client successfully connects to a MQTT Host. Will inform the EventHandler that the Client has connected.
      */
     void onConnect();
     /**
-     * @brief 
-     * 
+     * @brief Callback method when the Client failed to connect to a MQTT Host.
+     * Marks the Client as Disconnected
      * @param responseCode 
      */
     void onConnectFailure(int responseCode);
     /**
-     * @brief 
-     * 
-     * @param cause 
+     * @brief Callback method when the Client disconnects from a MQTT Host. Will inform the EventHandler that the Client has Disconnected.
+     * Marks the Client as Disconnected
+     * @param cause The cause of the disconnection
      */
     void onDisconnect(char *cause);
     /**
-     * @brief 
+     * @brief Callback when the Client has received a message from any of the Subscribed topics. Encodes the data into a SparkplugMessage
+     * and informs the event handler of the message.
      * 
-     * @param topicName 
-     * @param topicLen 
-     * @param message 
+     * @param topicName The topic name of the message
+     * @param topicLen The length of the topic string
+     * @param message MQTTAsync_message struct containing the payload of the message
      * @return int 
      */
     int onMessage(char *topicName, int topicLen, MQTTAsync_message *message);
     /**
-     * @brief 
+     * @brief Handles a request to publish data to the MQTT Host
+     * If requests are being published then the requests is added to the queue
      * 
      * @param publishRequest 
      * @return int 
