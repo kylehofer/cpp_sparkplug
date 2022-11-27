@@ -1,5 +1,5 @@
 /*
- * File: TahuBroker.cpp
+ * File: TahuClient.cpp
  * Project: cpp_sparkplug
  * Created Date: Friday November 18th 2022
  * Author: Kyle Hofer
@@ -29,7 +29,7 @@
  * HISTORY:
  */
 
-#include "TahuBroker.h"
+#include "TahuClient.h"
 #include <iostream>
 
 
@@ -37,7 +37,7 @@
 
 using namespace std;
 
-#define TAHUBROKER_LOGGER cout << "Tahu Broker: "
+#define TAHUCLIENT_LOGGER cout << "Tahu Client: "
 
 /**
  * @brief
@@ -47,17 +47,17 @@ using namespace std;
  */
 static void deliveryComplete(void *context, MQTTAsync_token token)
 {
-    TAHUBROKER_LOGGER "deliveryComplete!\n";
-    TahuBroker *broker = (TahuBroker *)context;
-    broker->onDelivery(token);
+    TAHUCLIENT_LOGGER "deliveryComplete!\n";
+    TahuClient *client = (TahuClient *)context;
+    client->onDelivery(token);
 }
 
 static void deliveryFailure(void *context, MQTTAsync_failureData *response)
 {
-    TAHUBROKER_LOGGER "deliveryFailure!\n";
-    TahuBroker *broker = (TahuBroker *)context;
+    TAHUCLIENT_LOGGER "deliveryFailure!\n";
+    TahuClient *client = (TahuClient *)context;
 
-    broker->onDeliveryFailure(response->token);
+    client->onDeliveryFailure(response->token);
 }
 
 /**
@@ -71,8 +71,8 @@ static void deliveryFailure(void *context, MQTTAsync_failureData *response)
  */
 static int messageArrived(void *context, char *topicName, int topicLen, MQTTAsync_message *message)
 {
-    TahuBroker *broker = (TahuBroker *)context;
-    return broker->onMessage(topicName, topicLen, message);
+    TahuClient *client = (TahuClient *)context;
+    return client->onMessage(topicName, topicLen, message);
 }
 
 /**
@@ -83,60 +83,60 @@ static int messageArrived(void *context, char *topicName, int topicLen, MQTTAsyn
  */
 static void connectionLost(void *context, char *cause)
 {
-    TAHUBROKER_LOGGER "Connection Lost!\n";
-    TahuBroker *broker = (TahuBroker *)context;
-    broker->onDisconnect(cause);
+    TAHUCLIENT_LOGGER "Connection Lost!\n";
+    TahuClient *client = (TahuClient *)context;
+    client->onDisconnect(cause);
 }
 
 void connectionFailure(void* context, MQTTAsync_failureData* response)
 {
-    TahuBroker *broker = (TahuBroker *)context;
-    broker->onConnectFailure(response->code);
+    TahuClient *client = (TahuClient *)context;
+    client->onConnectFailure(response->code);
 }
 
 static void connectionSuccess(void* context, MQTTAsync_successData* response)
 {
-    TAHUBROKER_LOGGER "Connection Success\n";
-    TahuBroker *broker = (TahuBroker *)context;
-    broker->onConnect();
+    TAHUCLIENT_LOGGER "Connection Success\n";
+    TahuClient *client = (TahuClient *)context;
+    client->onConnect();
 }
 
 static void onSubscribeSuccess(void* context, MQTTAsync_successData* response)
 {
-    TahuBroker *broker = (TahuBroker *)context;
+    TahuClient *client = (TahuClient *)context;
     // response->alt.qos.
 }
 
 static void onSubscribeFailure(void* context, MQTTAsync_failureData* response)
 {
-    TahuBroker *broker = (TahuBroker *)context;
+    TahuClient *client = (TahuClient *)context;
 }
 
 static void onCommandSubscribeSuccess(void* context, MQTTAsync_successData* response)
 {
-    TahuBroker *broker = (TahuBroker *)context;
+    TahuClient *client = (TahuClient *)context;
     
     // response->alt.qos.
 }
 
 static void onCommandSubscribeFailure(void* context, MQTTAsync_failureData* response)
 {
-    TahuBroker *broker = (TahuBroker *)context;
+    TahuClient *client = (TahuClient *)context;
 }
 
 static void onSubscribeHostSuccess(void* context, MQTTAsync_successData* response)
 {
-    TahuBroker *broker = (TahuBroker *)context;
+    TahuClient *client = (TahuClient *)context;
     // response->alt.qos.
 }
 
 
 static void onSubscribeHostFailure(void* context, MQTTAsync_failureData* response)
 {
-    TahuBroker *broker = (TahuBroker *)context;
+    TahuClient *client = (TahuClient *)context;
 }
 
-int TahuBroker::clientConnect()
+int TahuClient::clientConnect()
 {
     if (getState() != DISCONNECTED)
     {
@@ -149,14 +149,14 @@ int TahuBroker::clientConnect()
 
     if (returnCode != MQTTASYNC_SUCCESS)
     {
-        TAHUBROKER_LOGGER "Failed to connect, return code " << returnCode << "\n";
+        TAHUCLIENT_LOGGER "Failed to connect, return code " << returnCode << "\n";
         returnCode = EXIT_FAILURE;
         return returnCode;
     }
     return 0;
 }
 
-int TahuBroker::clientDisconnect()
+int TahuClient::clientDisconnect()
 {
     MQTTAsync_disconnectOptions disconnectOptions = MQTTAsync_disconnectOptions_initializer;
 
@@ -167,14 +167,14 @@ int TahuBroker::clientDisconnect()
     int returnCode;
     if ((returnCode = MQTTAsync_disconnect(client, &disconnectOptions)) != MQTTASYNC_SUCCESS)
     {
-        TAHUBROKER_LOGGER "Failed to disconnect, return code " << returnCode << "\n";
+        TAHUCLIENT_LOGGER "Failed to disconnect, return code " << returnCode << "\n";
         returnCode = EXIT_FAILURE;
         return returnCode;
     }
     return 0;
 }
 
-int TahuBroker::subscribeToPrimaryHost()
+int TahuClient::subscribeToPrimaryHost()
 {
     int returnCode;
 
@@ -187,7 +187,7 @@ int TahuBroker::subscribeToPrimaryHost()
 
     if (returnCode != MQTTASYNC_SUCCESS)
     {
-        TAHUBROKER_LOGGER "Failed to subscribe, return code " << returnCode << "\n";
+        TAHUCLIENT_LOGGER "Failed to subscribe, return code " << returnCode << "\n";
         returnCode = EXIT_FAILURE;
         // TODO: Subscribe Failure
         return returnCode;
@@ -196,7 +196,7 @@ int TahuBroker::subscribeToPrimaryHost()
     return 0; 
 }
 
-int TahuBroker::subscribeToCommands()
+int TahuClient::subscribeToCommands()
 {
     int returnCode;
 
@@ -212,7 +212,7 @@ int TahuBroker::subscribeToCommands()
 
     if (returnCode != MQTTASYNC_SUCCESS)
     {
-        TAHUBROKER_LOGGER "Failed to subscribe, return code " << returnCode << "\n";
+        TAHUCLIENT_LOGGER "Failed to subscribe, return code " << returnCode << "\n";
         returnCode = EXIT_FAILURE;
         // TODO: Subscribe Failure
         return returnCode;
@@ -221,7 +221,7 @@ int TahuBroker::subscribeToCommands()
     return 0;
 }
 
-int TahuBroker::unsubscribeToCommands()
+int TahuClient::unsubscribeToCommands()
 {
     int returnCode;
 
@@ -232,7 +232,7 @@ int TahuBroker::unsubscribeToCommands()
 
     if (returnCode != MQTTASYNC_SUCCESS)
     {
-        TAHUBROKER_LOGGER "Failed to unsubscribe, return code " << returnCode << "\n";
+        TAHUCLIENT_LOGGER "Failed to unsubscribe, return code " << returnCode << "\n";
         returnCode = EXIT_FAILURE;
         // TODO: Unsubscribe Failure
         return returnCode;
@@ -241,7 +241,7 @@ int TahuBroker::unsubscribeToCommands()
     return 0;
 }
 
-int TahuBroker::publishMessage(const char* topic, uint8_t* buffer, size_t length, DeliveryToken* token)
+int TahuClient::publishMessage(const char* topic, uint8_t* buffer, size_t length, DeliveryToken* token)
 {
     MQTTAsync_responseOptions responseOptions = MQTTAsync_responseOptions_initializer;
 
@@ -262,7 +262,7 @@ int TahuBroker::publishMessage(const char* topic, uint8_t* buffer, size_t length
     return returnCode;
 }
 
-int TahuBroker::configureClient(BrokerOptions* options)
+int TahuClient::configureClient(ClientOptions* options)
 {
     int returnCode;
 
@@ -272,7 +272,7 @@ int TahuBroker::configureClient(BrokerOptions* options)
 
     if (returnCode != MQTTASYNC_SUCCESS)
     {
-        TAHUBROKER_LOGGER "Failed to create client";
+        TAHUCLIENT_LOGGER "Failed to create client";
         // TODO: Client Failure
         return EXIT_FAILURE;
     }
@@ -310,18 +310,18 @@ int TahuBroker::configureClient(BrokerOptions* options)
     return 0;
 }
 
-TahuBroker::TahuBroker() : SparkplugBroker() { }
+TahuClient::TahuClient() : SparkplugClient() { }
 
-TahuBroker::TahuBroker(BrokerEventHandler *handler, BrokerOptions* options) : SparkplugBroker(handler, options) { }
+TahuClient::TahuClient(ClientEventHandler *handler, ClientOptions* options) : SparkplugClient(handler, options) { }
 
-TahuBroker::~TahuBroker()
+TahuClient::~TahuClient()
 {
-    SparkplugBroker::~SparkplugBroker();
+    SparkplugClient::~SparkplugClient();
 }
 
-bool TahuBroker::setPrimary(bool isPrimary)
+void TahuClient::setPrimary(bool isPrimary)
 {
-    SparkplugBroker::setPrimary(isPrimary);
+    SparkplugClient::setPrimary(isPrimary);
 
     if (!isPrimary)
     {
@@ -329,7 +329,7 @@ bool TahuBroker::setPrimary(bool isPrimary)
     }
 }
 
-void TahuBroker::publishFromQueue()
+void TahuClient::publishFromQueue()
 {
     if (getPrimary() && publishQueue.size() > 0)
     {
@@ -344,16 +344,16 @@ void TahuBroker::publishFromQueue()
     }
 }
 
-void TahuBroker::dumpQueue()
+void TahuClient::dumpQueue()
 {
     while (!publishQueue.empty())
     {
-        SparkplugBroker::destroyRequest(publishQueue.front());
+        SparkplugClient::destroyRequest(publishQueue.front());
         publishQueue.pop();
     }
 }
 
-int TahuBroker::onMessage(char *topicName, int topicLen, MQTTAsync_message *message)
+int TahuClient::onMessage(char *topicName, int topicLen, MQTTAsync_message *message)
 {
     if (handler != NULL)
     {
@@ -365,7 +365,7 @@ int TahuBroker::onMessage(char *topicName, int topicLen, MQTTAsync_message *mess
     return 1;
 }
 
-void TahuBroker::onDelivery(DeliveryToken token)
+void TahuClient::onDelivery(DeliveryToken token)
 {
     PublishRequest* publishRequest = publishQueue.front();
 
@@ -376,17 +376,16 @@ void TahuBroker::onDelivery(DeliveryToken token)
         {
             handler->onDelivery(this, publishRequest);
         }
-        SparkplugBroker::destroyRequest(publishRequest);
-
+        SparkplugClient::destroyRequest(publishRequest);
         publishFromQueue();
     }
     else
     {
-        TAHUBROKER_LOGGER "Oh no, we have a publish without a correct token\n";
+        TAHUCLIENT_LOGGER "Oh no, we have a publish without a correct token\n";
     }
 }
 
-void TahuBroker::onDeliveryFailure(DeliveryToken token)
+void TahuClient::onDeliveryFailure(DeliveryToken token)
 {
     if (getState() != CONNECTED)
     {
@@ -400,7 +399,10 @@ void TahuBroker::onDeliveryFailure(DeliveryToken token)
         if (publishRequest->retryCount >= PUBLISH_RETRIES)
         {
             publishQueue.pop();
-            SparkplugBroker::destroyRequest(publishRequest);
+            {
+                handler->onDelivery(this, publishRequest);
+            }
+            SparkplugClient::destroyRequest(publishRequest);
             publishFromQueue();
         }
         else
@@ -411,30 +413,30 @@ void TahuBroker::onDeliveryFailure(DeliveryToken token)
     }
     else
     {
-        TAHUBROKER_LOGGER "Oh no, we have a publish without a correct token\n";
+        TAHUCLIENT_LOGGER "Oh no, we have a publish without a correct token\n";
     }
 }
 
-void TahuBroker::onConnect()
+void TahuClient::onConnect()
 {
-    int returnCode;
-    int** tokens;
-    returnCode = MQTTAsync_getPendingTokens(client, tokens);
+    // int returnCode;
+    // int** tokens;
+    // returnCode = MQTTAsync_getPendingTokens(client, tokens);
     connected();
 }
 
-void TahuBroker::onDisconnect(char *cause)
+void TahuClient::onDisconnect(char *cause)
 {
     disconnected(cause);
 }
 
-void TahuBroker::onConnectFailure(int responseCode)
+void TahuClient::onConnectFailure(int responseCode)
 {
-    TAHUBROKER_LOGGER "Failed to connected. Response Code: " << responseCode << "\n";
+    TAHUCLIENT_LOGGER "Failed to connected. Response Code: " << responseCode << "\n";
     setState(DISCONNECTED);
 }
 
-int TahuBroker::requestPublish(PublishRequest* publishRequest)
+int TahuClient::requestPublish(PublishRequest* publishRequest)
 {
     publishQueue.push(publishRequest);
     if (publishQueue.size() >= 1 && getState() == CONNECTED)

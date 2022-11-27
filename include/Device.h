@@ -34,15 +34,42 @@
 
 #include "Publisher.h"
 
+/**
+ * @brief Class that represents a Sparkplug Device.
+ * Can hold a set of Metrics that can be published as a Sparkplug Device.
+ */
 class Device : Publisher
 {
 private:
     const char* name;
 protected:
+    /**
+     * @brief Initializes a base payload for adding metrics to.
+     * Will add Command metrics if it is a Birth payload.
+     * NOTE: Memory is allocated for the payload, and must be freed by the caller of this function.
+     * 
+     * @param isBirth 
+     * @return org_eclipse_tahu_protobuf_Payload* 
+     */
     org_eclipse_tahu_protobuf_Payload* initializePayload(bool isBirth);
 public:
+    /**
+     * @brief Construct a new Sparkplug Device
+     * 
+     */
     Device();
+    /**
+     * @brief Construct a new Sparkplug Device
+     * 
+     * @param name The name of the device
+     * @param publishPeriod The minimum time required between each publish.
+     */
     Device(const char* name, int publishPeriod);
+    /**
+     * @brief Get the name of the Device
+     * 
+     * @return const char* 
+     */
     const char* getName();
     using Publisher::canPublish;
     using Publisher::update;

@@ -1,15 +1,15 @@
-#ifndef TESTS_MOCKSPARKPLUGBROKER
-#define TESTS_MOCKSPARKPLUGBROKER
+#ifndef TESTS_MOCKSPARKPLUGCLIENT
+#define TESTS_MOCKSPARKPLUGCLIENT
 
 #include "gmock/gmock.h"
-#include "SparkplugBroker.h"
+#include "SparkplugClient.h"
 
-class MockSparkplugBroker : public SparkplugBroker {
+class MockSparkplugClient : public SparkplugClient {
 private:
 protected:
 public:
-    MockSparkplugBroker() : MockSparkplugBroker(NULL, NULL) {};
-    MockSparkplugBroker(BrokerEventHandler *handler, BrokerOptions* options) : SparkplugBroker(handler, options) { };
+    MockSparkplugClient() : MockSparkplugClient(NULL, NULL) {};
+    MockSparkplugClient(ClientEventHandler *handler, ClientOptions* options) : SparkplugClient(handler, options) { };
 
     MOCK_METHOD(int, requestPublish, (PublishRequest* publishRequest), (override));
     MOCK_METHOD(int, clientConnect, (), (override));
@@ -18,28 +18,28 @@ public:
     MOCK_METHOD(int, subscribeToCommands, (), (override));
     MOCK_METHOD(int, unsubscribeToCommands, (), (override));
     MOCK_METHOD(int, publishMessage, (const char* topic, uint8_t* buffer, size_t length, DeliveryToken* token), (override));
-    MOCK_METHOD(int, configureClient, (BrokerOptions* options), (override));
+    MOCK_METHOD(int, configureClient, (ClientOptions* options), (override));
 
 
     void connect()
     {
-        SparkplugBroker::connected();
+        SparkplugClient::connected();
     }
 
     void active()
     {
-        SparkplugBroker::activated();
+        SparkplugClient::activated();
     }
 
-    BrokerTopicOptions *getTopics()
+    ClientTopicOptions *getTopics()
     {
         return topics;
     }
 
     int publish(PublishRequest* publishRequest)
     {
-        return SparkplugBroker::publish(publishRequest);
+        return SparkplugClient::publish(publishRequest);
     }
 };
 
-#endif /* TESTS_MOCKSPARKPLUGBROKER */
+#endif /* TESTS_MOCKSPARKPLUGCLIENT */

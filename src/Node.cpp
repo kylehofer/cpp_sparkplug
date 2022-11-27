@@ -74,7 +74,7 @@ static org_eclipse_tahu_protobuf_Payload *addNodeControl(org_eclipse_tahu_protob
 }
 
 Node::Node() : Node(NULL) {}
-Node::Node(NodeOptions *options) : Publisher(options != NULL ? options->publishPeriod : 30), topicsConfigured(false), enabled(false), deviceCount(0), activeBroker(NULL), asyncLock(new mutex())
+Node::Node(NodeOptions *options) : Publisher(options != NULL ? options->publishPeriod : 30), topicsConfigured(false), enabled(false), deviceCount(0), activeClient(NULL), asyncLock(new mutex())
 {
     if (options != NULL)
     {
@@ -84,26 +84,26 @@ Node::Node(NodeOptions *options) : Publisher(options != NULL ? options->publishP
 
 Node::~Node()
 {
-    for (auto broker : brokers)
+    for (auto client : clients)
     {
-        delete broker;
+        delete client;
     }
     delete asyncLock;
     if (topicsConfigured)
     {
         free(nodeBaseTopic);
         free(deviceBaseTopic);
-        if (brokerTopics.nodeCommandTopic != NULL)
+        if (clientTopics.nodeCommandTopic != NULL)
         {
-            free(brokerTopics.nodeCommandTopic);
+            free(clientTopics.nodeCommandTopic);
         }
-        if (brokerTopics.deviceCommandTopic != NULL)
+        if (clientTopics.deviceCommandTopic != NULL)
         {
-            free(brokerTopics.deviceCommandTopic);
+            free(clientTopics.deviceCommandTopic);
         }
-        if (brokerTopics.primaryHostTopic != NULL)
+        if (clientTopics.primaryHostTopic != NULL)
         {
-            free(brokerTopics.primaryHostTopic);
+            free(clientTopics.primaryHostTopic);
         }
     }
 }
@@ -111,9 +111,9 @@ Node::~Node()
 void Node::connect()
 {
     lock_guard<mutex> lock(*asyncLock);
-    for (auto broker : brokers)
+    for (auto client : clients)
     {
-        broker->connect();
+        client->connect();
     }
 }
 
@@ -125,17 +125,17 @@ int Node::enable()
         return ENABLE_INVALID_TOPICS;
     }
 
-    if (brokers.size() == 0)
+    if (clients.size() == 0)
     {
-        cout << "Cannot enable node as it has no Brokers added.\n";
-        return ENABLE_NO_BROKERS;
+        cout << "Cannot enable node as it has no Clients added.\n";
+        return ENABLE_NO_CLIENTS;
     }
 
-    for (auto broker : brokers)
+    for (auto client : clients)
     {
-        if (broker->configure(&brokerTopics) != 0)
+        if (client->configure(&clientTopics) != 0)
         {
-            return ENABLE_BROKER_CONFIG_FAIL;
+            return ENABLE_CLIENT_CONFIG_FAIL;
         };
     }
 
@@ -198,15 +198,15 @@ void Node::configureTopics(const char *groupId, const char *nodeId, const char *
             primaryHostTopic = (char *)malloc(primaryHostSize + miscSize);
             sprintf(primaryHostTopic, PRIMARY_HOST_TOPIC_BUILDER, primaryHost);
 
-            setBrokerMode(PRIMARY_HOST);
+            setClientMode(PRIMARY_HOST);
         }
         else
         {
             primaryHostTopic = NULL;
-            setBrokerMode(SINGLE);
+            setClientMode(SINGLE);
         }
 
-        brokerTopics = {
+        clientTopics = {
             nodeCommandTopic,
             deviceCommandTopic,
             primaryHostTopic};
@@ -239,7 +239,7 @@ int Node::publish(bool isBirth = false)
     publishRequest->publisher = (Publisher *)this;
     publishRequest->topic = topic;
 
-    return brokers.front()->requestPublish(publishRequest);
+    return clients.front()->requestPublish(publishRequest);
 }
 
 int Node::publish(Device *device, bool isBirth = false)
@@ -266,74 +266,74 @@ int Node::publish(Device *device, bool isBirth = false)
     publishRequest->publisher = (Publisher *)device;
     publishRequest->topic = topic;
 
-    return brokers.front()->requestPublish(publishRequest);
+    return clients.front()->requestPublish(publishRequest);
 }
 
-void Node::setBrokerMode(SparkplugBrokerMode mode)
+void Node::setClientMode(SparkplugClientMode mode)
 {
     lock_guard<mutex> lock(*asyncLock);
     this->hostMode = mode;
 }
 
-SparkplugBrokerMode Node::getBrokerMode()
+SparkplugClientMode Node::getClientMode()
 {
     lock_guard<mutex> lock(*asyncLock);
     return hostMode;
 }
 
-void Node::setActiveBroker(SparkplugBroker *activeBroker)
+void Node::setActiveClient(SparkplugClient *activeClient)
 {
     lock_guard<mutex> lock(*asyncLock);
 
-    if (activeBroker == this->activeBroker)
+    if (activeClient == this->activeClient)
     {
         return;
     }
 
-    if (this->activeBroker != NULL)
+    if (this->activeClient != NULL)
     {
-        this->activeBroker->deactivate();
+        this->activeClient->deactivate();
     }
 
-    this->activeBroker = activeBroker;
+    this->activeClient = activeClient;
 
-    if (activeBroker != NULL)
+    if (activeClient != NULL)
     {
         publishBirth();
     }
 }
 
-void Node::activateBroker(SparkplugBroker* broker)
+void Node::activateClient(SparkplugClient* client)
 {
     lock_guard<mutex> lock(*asyncLock);
 
-    if (broker == this->activeBroker)
+    if (client == this->activeClient)
     {
         return;
     }
 
-    if (broker != NULL)
+    if (client != NULL)
     {
-        broker->activate();
+        client->activate();
     }
 }
 
-void Node::deactivateBroker(SparkplugBroker* broker)
+void Node::deactivateClient(SparkplugClient* client)
 {
     lock_guard<mutex> lock(*asyncLock);
 
-    if (broker == this->activeBroker)
+    if (client == this->activeClient)
     {
         return;
     }
 
-    setActiveBroker(NULL);
+    setActiveClient(NULL);
 }
 
-SparkplugBroker *Node::getActiveBroker()
+SparkplugClient *Node::getActiveClient()
 {
     lock_guard<mutex> lock(*asyncLock);
-    return activeBroker;
+    return activeClient;
 }
 
 int32_t Node::execute(int32_t executeTime)
@@ -343,13 +343,13 @@ int32_t Node::execute(int32_t executeTime)
         cout << "Cannot execute as the node has not been enabled\n";
         return -1;
     }
-    // Ensures all Brokers are connected.
+    // Ensures all Clients are connected.
     connect();
 
-    SparkplugBroker *activeBroker = getActiveBroker();
+    SparkplugClient *activeClient = getActiveClient();
     int32_t nextExecute = 0xFFFF;
 
-    if (activeBroker != NULL && activeBroker->getState() != DISCONNECTED)
+    if (activeClient != NULL && activeClient->getState() != DISCONNECTED)
     {
         nextExecute = min(update(executeTime), nextExecute);
         if (canPublish())
@@ -399,14 +399,10 @@ void Node::begin()
     }
 }
 
-void Node::stop()
+SparkplugClient* Node::addClient(SparkplugClient *client)
 {
-}
-
-SparkplugBroker* Node::addBroker(SparkplugBroker *broker)
-{
-    brokers.push_back(broker);
-    return broker;
+    clients.push_back(client);
+    return client;
 }
 
 int Node::nextServer()
@@ -420,64 +416,67 @@ void Node::setDevices(Device **things, int8_t count)
     this->deviceCount = count;
 }
 
-void Node::onDelivery(SparkplugBroker *broker, PublishRequest *request)
+void Node::onDelivery(SparkplugClient *client, PublishRequest *request)
 {
     request->publisher->published();
     // TODO: Delivery Handler
 }
 
-int Node::onMessage(SparkplugBroker *broker, const char *topicName, int topicLen, SparkplugMessage *message)
+int Node::onMessage(SparkplugClient *client, const char *topicName, int topicLen, SparkplugMessage *message)
 {
-    if (strstr(topicName, NCMD) != NULL)
+    if (client == getActiveClient())
     {
-        cout << "Node Command\n";
+        if (strstr(topicName, NCMD) != NULL)
+        {
+            cout << "Node Command\n";
+        }
+        else if (strstr(topicName, DCMD) != NULL)
+        {
+            cout << "Device Command\n";
+        }
     }
-    else if (strstr(topicName, DCMD) != NULL)
-    {
-        cout << "Device Command\n";
-    }
-    else if (brokerTopics.primaryHostTopic != NULL && strcmp(topicName, brokerTopics.primaryHostTopic) == 0)
+
+    if (clientTopics.primaryHostTopic != NULL && strcmp(topicName, clientTopics.primaryHostTopic) == 0)
     {
         if (strncmp((char *)message->payload, "ONLINE", message->payloadlen) == 0)
         {
             // Primary Host Online
-            if (getActiveBroker() != broker)
+            if (getActiveClient() != client)
             {
-                activateBroker(broker);
+                activateClient(client);
             }
         }
-        else
+        else if (strncmp((char *)message->payload, "OFFLINE", message->payloadlen) == 0)
         {
-            if (getActiveBroker() == broker)
+            if (getActiveClient() == client)
             {
-                deactivateBroker(broker);
+                deactivateClient(client);
             }
         }
     }
     return 0;
 }
 
-
-void Node::onActive(SparkplugBroker *broker)
+void Node::onActive(SparkplugClient *client)
 {
-    setActiveBroker(broker);
+    setActiveClient(client);
 }
 
-void Node::onDeactive(SparkplugBroker *broker)
+void Node::onDeactive(SparkplugClient *client)
 {
 }
 
-void Node::onConnect(SparkplugBroker *broker)
+void Node::onConnect(SparkplugClient *client)
 {
-    if (getBrokerMode() == SINGLE)
+    if (getClientMode() == SINGLE)
     {
-        activateBroker(broker);
+        activateClient(client);
     }
 }
 
-void Node::onDisconnect(SparkplugBroker *broker, char *cause)
+void Node::onDisconnect(SparkplugClient *client, char *cause)
 {
-    switch (getBrokerMode())
+    switch (getClientMode())
     {
     case SINGLE:
     case PRIMARY_HOST:
