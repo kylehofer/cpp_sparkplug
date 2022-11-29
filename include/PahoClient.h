@@ -1,5 +1,5 @@
 /*
- * File: TahuClient.h
+ * File: PahoClient.h
  * Project: cpp_sparkplug
  * Created Date: Friday November 18th 2022
  * Author: Kyle Hofer
@@ -29,8 +29,8 @@
  * HISTORY:
  */
 
-#ifndef INCLUDE_TAHUCLIENT
-#define INCLUDE_TAHUCLIENT
+#ifndef INCLUDE_PAHOCLIENT
+#define INCLUDE_PAHOCLIENT
 
 #include "SparkplugClient.h"
 #include "MQTTAsync.h"
@@ -39,10 +39,10 @@
 using namespace std;
 
 /**
- * @brief An Eclipse Tahu implementation of a SparkplugClient
+ * @brief An Eclipse Paho implementation of a SparkplugClient
  * Implements an asynchronous client and manages queues for handling requests.
  */
-class TahuClient : SparkplugClient
+class PahoClient : SparkplugClient
 {
 private:
     MQTTAsync client;
@@ -119,18 +119,18 @@ protected:
     using SparkplugClient::getPrimary;
 public:
     /**
-     * @brief Construct a new Tahu MQTT Client
+     * @brief Construct a new Paho MQTT Client
      * 
      */
-    TahuClient();
+    PahoClient();
     /**
-     * @brief Construct a new Tahu MQTT Client
+     * @brief Construct a new Paho MQTT Client
      * 
      * @param handler The Event Handler that manages the callbacks from the Client
      * @param options The options for configuring the MQTT Client
      */
-    TahuClient(ClientEventHandler *handler, ClientOptions* options);
-    ~TahuClient();
+    PahoClient(ClientEventHandler *handler, ClientOptions* options);
+    ~PahoClient();
     /**
      * @brief Callback method for when a publish has been delivered on a client.
      * The token is used to match to a SparkplugRequest. The client will inform the EventHandler of the
@@ -183,6 +183,8 @@ public:
      * @return int 
      */
     int requestPublish(PublishRequest* publishRequest);
+
+    void onCommandSubscription();
 };
 
-#endif /* INCLUDE_TAHUCLIENT */
+#endif /* INCLUDE_PAHOCLIENT */

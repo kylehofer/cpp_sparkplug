@@ -74,6 +74,7 @@ public:
     using Publisher::canPublish;
     using Publisher::update;
     using Publisher::getPayload;
+    using Publisher::setMetrics;
 };
 
 #endif /* INCLUDE_DEVICE */

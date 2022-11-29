@@ -147,7 +147,6 @@ int Node::enable()
 void Node::publishBirth()
 {
     reset_sparkplug_sequence();
-    // Publish Birth
     publish(true);
     for (int8_t i = (deviceCount - 1); i >= 0; i--)
     {
@@ -320,9 +319,12 @@ void Node::activateClient(SparkplugClient* client)
 
 void Node::deactivateClient(SparkplugClient* client)
 {
-    lock_guard<mutex> lock(*asyncLock);
+    bool isActiveClient;
+    asyncLock->lock();
+    isActiveClient = client != this->activeClient;
+    asyncLock->unlock();
 
-    if (client == this->activeClient)
+    if (isActiveClient)
     {
         return;
     }
@@ -343,34 +345,30 @@ int32_t Node::execute(int32_t executeTime)
         cout << "Cannot execute as the node has not been enabled\n";
         return -1;
     }
-    // Ensures all Clients are connected.
-    connect();
-
+    if (!isActive())
+    {
+        return EXECUTE_IDLE_DELAY;
+    }
     SparkplugClient *activeClient = getActiveClient();
     int32_t nextExecute = 0xFFFF;
-
-    if (activeClient != NULL && activeClient->getState() != DISCONNECTED)
+    nextExecute = min(update(executeTime), nextExecute);
+    if (canPublish())
     {
-        nextExecute = min(update(executeTime), nextExecute);
-        if (canPublish())
-        {
-            publish();
-        }
-
-        for (int8_t i = (deviceCount - 1); i >= 0; i--)
-        {
-            Device *device = devices[i];
-            nextExecute = min(device->update(executeTime), nextExecute);
-
-            if (device->canPublish())
-            {
-                publish(device);
-            }
-        }
-
-        return nextExecute;
+        publish();
     }
-    return EXECUTE_IDLE_DELAY;
+
+    for (int8_t i = (deviceCount - 1); i >= 0; i--)
+    {
+        Device *device = devices[i];
+        nextExecute = min(device->update(executeTime), nextExecute);
+
+        if (device->canPublish())
+        {
+            publish(device);
+        }
+    }
+
+    return nextExecute;
 }
 
 void Node::begin()
@@ -466,6 +464,15 @@ void Node::onDeactive(SparkplugClient *client)
 {
 }
 
+void Node::stop()
+{
+    for (auto client : clients)
+    {
+        client->deactivate();
+        client->disconnect();
+    }
+}
+
 void Node::onConnect(SparkplugClient *client)
 {
     if (getClientMode() == SINGLE)
@@ -491,4 +498,23 @@ void Node::onDisconnect(SparkplugClient *client, char *cause)
 org_eclipse_tahu_protobuf_Payload *Node::initializePayload(bool isBirth)
 {
     return isBirth ? addNodeControl(Publisher::initializePayload(isBirth)) : Publisher::initializePayload(isBirth);
+}
+
+bool Node::isActive()
+{
+    if (!enabled)
+    {
+        return false;
+    }
+    connect();
+    SparkplugClient *activeClient = getActiveClient();
+    if (activeClient == NULL)
+    {
+        return false;
+    }
+    if (activeClient->getState() != CONNECTED)
+    {
+        return false;
+    }
+    return true;
 }

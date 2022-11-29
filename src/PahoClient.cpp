@@ -1,5 +1,5 @@
 /*
- * File: TahuClient.cpp
+ * File: PahoClient.cpp
  * Project: cpp_sparkplug
  * Created Date: Friday November 18th 2022
  * Author: Kyle Hofer
@@ -29,7 +29,7 @@
  * HISTORY:
  */
 
-#include "TahuClient.h"
+#include "PahoClient.h"
 #include <iostream>
 
 
@@ -37,7 +37,7 @@
 
 using namespace std;
 
-#define TAHUCLIENT_LOGGER cout << "Tahu Client: "
+#define PAHOCLIENT_LOGGER cout << "Paho Client: "
 
 /**
  * @brief
@@ -47,15 +47,13 @@ using namespace std;
  */
 static void deliveryComplete(void *context, MQTTAsync_token token)
 {
-    TAHUCLIENT_LOGGER "deliveryComplete!\n";
-    TahuClient *client = (TahuClient *)context;
+    PahoClient *client = (PahoClient *)context;
     client->onDelivery(token);
 }
 
 static void deliveryFailure(void *context, MQTTAsync_failureData *response)
 {
-    TAHUCLIENT_LOGGER "deliveryFailure!\n";
-    TahuClient *client = (TahuClient *)context;
+    PahoClient *client = (PahoClient *)context;
 
     client->onDeliveryFailure(response->token);
 }
@@ -71,7 +69,7 @@ static void deliveryFailure(void *context, MQTTAsync_failureData *response)
  */
 static int messageArrived(void *context, char *topicName, int topicLen, MQTTAsync_message *message)
 {
-    TahuClient *client = (TahuClient *)context;
+    PahoClient *client = (PahoClient *)context;
     return client->onMessage(topicName, topicLen, message);
 }
 
@@ -83,60 +81,56 @@ static int messageArrived(void *context, char *topicName, int topicLen, MQTTAsyn
  */
 static void connectionLost(void *context, char *cause)
 {
-    TAHUCLIENT_LOGGER "Connection Lost!\n";
-    TahuClient *client = (TahuClient *)context;
+    PahoClient *client = (PahoClient *)context;
     client->onDisconnect(cause);
 }
 
 void connectionFailure(void* context, MQTTAsync_failureData* response)
 {
-    TahuClient *client = (TahuClient *)context;
+    PahoClient *client = (PahoClient *)context;
     client->onConnectFailure(response->code);
 }
 
 static void connectionSuccess(void* context, MQTTAsync_successData* response)
 {
-    TAHUCLIENT_LOGGER "Connection Success\n";
-    TahuClient *client = (TahuClient *)context;
+    PahoClient *client = (PahoClient *)context;
     client->onConnect();
 }
 
 static void onSubscribeSuccess(void* context, MQTTAsync_successData* response)
 {
-    TahuClient *client = (TahuClient *)context;
-    // response->alt.qos.
+    PahoClient *client = (PahoClient *)context;
 }
 
 static void onSubscribeFailure(void* context, MQTTAsync_failureData* response)
 {
-    TahuClient *client = (TahuClient *)context;
+    PahoClient *client = (PahoClient *)context;
 }
 
 static void onCommandSubscribeSuccess(void* context, MQTTAsync_successData* response)
 {
-    TahuClient *client = (TahuClient *)context;
-    
-    // response->alt.qos.
+    PahoClient *client = (PahoClient *)context;
+
+    client->onCommandSubscription();
 }
 
 static void onCommandSubscribeFailure(void* context, MQTTAsync_failureData* response)
 {
-    TahuClient *client = (TahuClient *)context;
+    PahoClient *client = (PahoClient *)context;
 }
 
 static void onSubscribeHostSuccess(void* context, MQTTAsync_successData* response)
 {
-    TahuClient *client = (TahuClient *)context;
-    // response->alt.qos.
+    PahoClient *client = (PahoClient *)context;
 }
 
 
 static void onSubscribeHostFailure(void* context, MQTTAsync_failureData* response)
 {
-    TahuClient *client = (TahuClient *)context;
+    PahoClient *client = (PahoClient *)context;
 }
 
-int TahuClient::clientConnect()
+int PahoClient::clientConnect()
 {
     if (getState() != DISCONNECTED)
     {
@@ -149,14 +143,14 @@ int TahuClient::clientConnect()
 
     if (returnCode != MQTTASYNC_SUCCESS)
     {
-        TAHUCLIENT_LOGGER "Failed to connect, return code " << returnCode << "\n";
+        PAHOCLIENT_LOGGER "Failed to connect, return code " << returnCode << "\n";
         returnCode = EXIT_FAILURE;
         return returnCode;
     }
     return 0;
 }
 
-int TahuClient::clientDisconnect()
+int PahoClient::clientDisconnect()
 {
     MQTTAsync_disconnectOptions disconnectOptions = MQTTAsync_disconnectOptions_initializer;
 
@@ -167,14 +161,14 @@ int TahuClient::clientDisconnect()
     int returnCode;
     if ((returnCode = MQTTAsync_disconnect(client, &disconnectOptions)) != MQTTASYNC_SUCCESS)
     {
-        TAHUCLIENT_LOGGER "Failed to disconnect, return code " << returnCode << "\n";
+        PAHOCLIENT_LOGGER "Failed to disconnect, return code " << returnCode << "\n";
         returnCode = EXIT_FAILURE;
         return returnCode;
     }
     return 0;
 }
 
-int TahuClient::subscribeToPrimaryHost()
+int PahoClient::subscribeToPrimaryHost()
 {
     int returnCode;
 
@@ -187,7 +181,7 @@ int TahuClient::subscribeToPrimaryHost()
 
     if (returnCode != MQTTASYNC_SUCCESS)
     {
-        TAHUCLIENT_LOGGER "Failed to subscribe, return code " << returnCode << "\n";
+        PAHOCLIENT_LOGGER "Failed to subscribe, return code " << returnCode << "\n";
         returnCode = EXIT_FAILURE;
         // TODO: Subscribe Failure
         return returnCode;
@@ -196,7 +190,7 @@ int TahuClient::subscribeToPrimaryHost()
     return 0; 
 }
 
-int TahuClient::subscribeToCommands()
+int PahoClient::subscribeToCommands()
 {
     int returnCode;
 
@@ -212,7 +206,7 @@ int TahuClient::subscribeToCommands()
 
     if (returnCode != MQTTASYNC_SUCCESS)
     {
-        TAHUCLIENT_LOGGER "Failed to subscribe, return code " << returnCode << "\n";
+        PAHOCLIENT_LOGGER "Failed to subscribe, return code " << returnCode << "\n";
         returnCode = EXIT_FAILURE;
         // TODO: Subscribe Failure
         return returnCode;
@@ -221,7 +215,7 @@ int TahuClient::subscribeToCommands()
     return 0;
 }
 
-int TahuClient::unsubscribeToCommands()
+int PahoClient::unsubscribeToCommands()
 {
     int returnCode;
 
@@ -232,7 +226,7 @@ int TahuClient::unsubscribeToCommands()
 
     if (returnCode != MQTTASYNC_SUCCESS)
     {
-        TAHUCLIENT_LOGGER "Failed to unsubscribe, return code " << returnCode << "\n";
+        PAHOCLIENT_LOGGER "Failed to unsubscribe, return code " << returnCode << "\n";
         returnCode = EXIT_FAILURE;
         // TODO: Unsubscribe Failure
         return returnCode;
@@ -241,12 +235,11 @@ int TahuClient::unsubscribeToCommands()
     return 0;
 }
 
-int TahuClient::publishMessage(const char* topic, uint8_t* buffer, size_t length, DeliveryToken* token)
+int PahoClient::publishMessage(const char* topic, uint8_t* buffer, size_t length, DeliveryToken* token)
 {
     MQTTAsync_responseOptions responseOptions = MQTTAsync_responseOptions_initializer;
 
     responseOptions.onFailure = deliveryFailure;
-    // responseOptions.onSuccess = onSend;
     responseOptions.context = this;
 
     int returnCode = MQTTAsync_send(client, topic, length, buffer, QOS, 0, &responseOptions);
@@ -262,7 +255,7 @@ int TahuClient::publishMessage(const char* topic, uint8_t* buffer, size_t length
     return returnCode;
 }
 
-int TahuClient::configureClient(ClientOptions* options)
+int PahoClient::configureClient(ClientOptions* options)
 {
     int returnCode;
 
@@ -272,7 +265,7 @@ int TahuClient::configureClient(ClientOptions* options)
 
     if (returnCode != MQTTASYNC_SUCCESS)
     {
-        TAHUCLIENT_LOGGER "Failed to create client";
+        PAHOCLIENT_LOGGER "Failed to create client";
         // TODO: Client Failure
         return EXIT_FAILURE;
     }
@@ -310,16 +303,17 @@ int TahuClient::configureClient(ClientOptions* options)
     return 0;
 }
 
-TahuClient::TahuClient() : SparkplugClient() { }
+PahoClient::PahoClient() : SparkplugClient() { }
 
-TahuClient::TahuClient(ClientEventHandler *handler, ClientOptions* options) : SparkplugClient(handler, options) { }
+PahoClient::PahoClient(ClientEventHandler *handler, ClientOptions* options) : SparkplugClient(handler, options) { }
 
-TahuClient::~TahuClient()
+PahoClient::~PahoClient()
 {
-    SparkplugClient::~SparkplugClient();
+    MQTTAsync_destroy(&client);
+    dumpQueue();
 }
 
-void TahuClient::setPrimary(bool isPrimary)
+void PahoClient::setPrimary(bool isPrimary)
 {
     SparkplugClient::setPrimary(isPrimary);
 
@@ -329,7 +323,7 @@ void TahuClient::setPrimary(bool isPrimary)
     }
 }
 
-void TahuClient::publishFromQueue()
+void PahoClient::publishFromQueue()
 {
     if (getPrimary() && publishQueue.size() > 0)
     {
@@ -344,7 +338,7 @@ void TahuClient::publishFromQueue()
     }
 }
 
-void TahuClient::dumpQueue()
+void PahoClient::dumpQueue()
 {
     while (!publishQueue.empty())
     {
@@ -353,11 +347,13 @@ void TahuClient::dumpQueue()
     }
 }
 
-int TahuClient::onMessage(char *topicName, int topicLen, MQTTAsync_message *message)
+int PahoClient::onMessage(char *topicName, int topicLen, MQTTAsync_message *message)
 {
     if (handler != NULL)
     {
         SparkplugMessage* sparkplugMessage = (SparkplugMessage*) malloc(sizeof(SparkplugMessage));
+        sparkplugMessage->payload = message->payload;
+        sparkplugMessage->payloadlen = message->payloadlen;
         handler->onMessage(this, topicName, topicLen, sparkplugMessage);
         free(sparkplugMessage);
         MQTTAsync_freeMessage(&message);
@@ -365,10 +361,9 @@ int TahuClient::onMessage(char *topicName, int topicLen, MQTTAsync_message *mess
     return 1;
 }
 
-void TahuClient::onDelivery(DeliveryToken token)
+void PahoClient::onDelivery(DeliveryToken token)
 {
     PublishRequest* publishRequest = publishQueue.front();
-
     if (publishRequest->token == token)
     {
         publishQueue.pop();
@@ -381,11 +376,11 @@ void TahuClient::onDelivery(DeliveryToken token)
     }
     else
     {
-        TAHUCLIENT_LOGGER "Oh no, we have a publish without a correct token\n";
+        PAHOCLIENT_LOGGER "Oh no, we have a publish without a correct token\n";
     }
 }
 
-void TahuClient::onDeliveryFailure(DeliveryToken token)
+void PahoClient::onDeliveryFailure(DeliveryToken token)
 {
     if (getState() != CONNECTED)
     {
@@ -413,35 +408,37 @@ void TahuClient::onDeliveryFailure(DeliveryToken token)
     }
     else
     {
-        TAHUCLIENT_LOGGER "Oh no, we have a publish without a correct token\n";
+        PAHOCLIENT_LOGGER "Oh no, we have a publish without a correct token\n";
     }
 }
 
-void TahuClient::onConnect()
+void PahoClient::onConnect()
 {
-    // int returnCode;
-    // int** tokens;
-    // returnCode = MQTTAsync_getPendingTokens(client, tokens);
     connected();
 }
 
-void TahuClient::onDisconnect(char *cause)
+void PahoClient::onDisconnect(char *cause)
 {
     disconnected(cause);
 }
 
-void TahuClient::onConnectFailure(int responseCode)
+void PahoClient::onConnectFailure(int responseCode)
 {
-    TAHUCLIENT_LOGGER "Failed to connected. Response Code: " << responseCode << "\n";
+    PAHOCLIENT_LOGGER "Failed to connected. Response Code: " << responseCode << "\n";
     setState(DISCONNECTED);
 }
 
-int TahuClient::requestPublish(PublishRequest* publishRequest)
+int PahoClient::requestPublish(PublishRequest* publishRequest)
 {
     publishQueue.push(publishRequest);
-    if (publishQueue.size() >= 1 && getState() == CONNECTED)
+    if (publishQueue.size() == 1 && getState() == CONNECTED)
     {
         publishFromQueue();
     }
     return 0;
+}
+
+void PahoClient::onCommandSubscription()
+{
+    activated();
 }

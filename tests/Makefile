@@ -1,58 +1,61 @@
+#  SOURCE CONFIGURATION  #
 TARGET=SparkplugTests
-OUT_DIR=../build/tests
-SRC_OUT_DIR=../build/src
-TEST_DIR=.
+
+BUILD=../build
+BUILD_LIB=$(BUILD)/lib
+BUILD_TESTS=$(BUILD)/tests
 SRC_DIR=../src
+TEST_DIR=.
 INCLUDE_DIR=../include
 TEST_INCLUDE_DIR=.
-INCLUDE_LIB_DIR=../lib
-INSTALL_DIR=/usr/bin
 
-PKGCONFIG = $(shell which pkg-config)
+C_SOURCE=$(wildcard $(TEST_DIR)/*.c) $(wildcard $(TEST_DIR)/*/*.c)
+CXX_SOURCE=$(wildcard $(TEST_DIR)/*.cpp) $(wildcard $(TEST_DIR)/*/*.cpp)
 
-# compiler
-CC=g++
-# debug
+C_OBJECTS=$(patsubst %, $(BUILD_TESTS)/%, $(C_SOURCE:.c=.o))
+CXX_OBJECTS=$(patsubst %, $(BUILD_TESTS)/%, $(CXX_SOURCE:.cpp=.o))
+OBJECTS_DEP=$(CXX_OBJECTS) $(C_OBJECTS)
+
+#  COMPILER FLAGS  #
+CPP=g++
 DEBUG=-g
-# optimisation
 OPT=-O0
-# warnings
 WARN=-Wall
-
 PTHREAD=-pthread
+CPPFLAGS=$(DEBUG) $(OPT) $(WARN) $(PTHREAD) -std=c++11
 
-TEST_OBJECTS=$(patsubst ${TEST_DIR}/%.cpp, $(OUT_DIR)/%.o, $(wildcard ${TEST_DIR}/*.cpp))
-LIBRARIES=../include/
-SRC_OBJECTS= $(filter-out ${SRC_OUT_DIR}/main.o, $(wildcard ${SRC_OUT_DIR}/*.o))
-
-CCFLAGS=$(DEBUG) $(OPT) $(WARN) $(PTHREAD) -pipe -std=c++0x
-
-# linker  -export-dynamic -lX11 -ljpeg  -L/usr/local/lib/
+#  LINKER FLAGS  #  -fPIC
 LD=g++
-LFLAGS=-I${INCLUDE_DIR} -I${TEST_INCLUDE_DIR} -I${INCLUDE_LIB_DIR}
-LDFLAGS=$(PTHREAD) -lpaho-mqtt3as -L${INCLUDE_LIB_DIR} -ltahu -lgtest -lgmock
+LFLAGS=-I${INCLUDE_DIR} -I${TEST_INCLUDE_DIR}
+LDFLAGS=$(PTHREAD) -lpaho-mqtt3as -L${BUILD_LIB} -ltahu -lgtest -lgmock -lmosquitto -lcppsparkplug
 
+#  UTILITY  #
 MKDIR_P = mkdir -p
 
-all: src ${OUT_DIR} ${TEST_OBJECTS}
-	$(LD) -o $(OUT_DIR)/$(TARGET) ${TEST_OBJECTS} ${SRC_OBJECTS} $(LDFLAGS) $(LFLAGS) 
+
+.PHONY: all src clean valgrind
+
+all: src ${BUILD_TESTS} $(C_OBJECTS) $(CXX_OBJECTS)
+	$(LD) -o $(BUILD_TESTS)/$(TARGET) $(OBJECTS_DEP) $(LDFLAGS) $(LFLAGS) 
 
 valgrind: all
-	valgrind --leak-check=yes -s $(OUT_DIR)/$(TARGET)
+	valgrind --leak-check=yes -s $(BUILD_TESTS)/$(TARGET)
 
 run: all
-	$(OUT_DIR)/$(TARGET)
+	$(BUILD_TESTS)/$(TARGET)
 
-${OUT_DIR}:
-	${MKDIR_P} ${OUT_DIR}
+${BUILD_TESTS}:
+	${MKDIR_P} ${BUILD_TESTS}
 
-$(TEST_OBJECTS): ${OUT_DIR}/%.o : ${TEST_DIR}/%.cpp
-	$(CC) -c $< $(CCFLAGS) $(LFLAGS) $(LDFLAGS) -o $@
+$(C_OBJECTS): $(BUILD_TESTS)/%.o : $(TEST_DIR)/%.c
+	$(CPP) -c $< $(CPPFLAGS) $(LFLAGS) -o $@
+
+$(CXX_OBJECTS): $(BUILD_TESTS)/%.o : $(TEST_DIR)/%.cpp
+	$(CPP) -c $< $(CPPFLAGS) $(LFLAGS) -o $@
 
 clean:
-	rm -f ${OUT_DIR}/*.o ${OUT_DIR}/*.cpp $(TARGET)
+	rm -rf ${TEST_DIR}/*.o $(BUILD_TESTS)
 
 src:
 	$(MAKE) -C ../src
 
-.PHONY: src

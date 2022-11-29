@@ -37,7 +37,7 @@ Metric::~Metric()
     free(data);
 }
 
-Metric::Metric(const char *name, void *data, size_t size, uint8_t dataType) : dataType(dataType), dirty(false)
+Metric::Metric(const char *name, void *data, size_t size, uint8_t dataType) : dataType(dataType), dirty(false), alias(0)
 {
     this->name = strdup(name);
     this->data = malloc(size);
