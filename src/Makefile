@@ -1,53 +1,62 @@
-TARGET=Sparkplug
-OUT_DIR=../build/src
+#  SOURCE CONFIGURATION  #
+TARGET=libcppsparkplug
+
+BUILD=../build
+BUILD_LIB=$(BUILD)/lib
+BUILD_SRC=$(BUILD)/src
 SRC_DIR=.
 INCLUDE_DIR=../include
-INCLUDE_LIB_DIR=../lib
-INSTALL_DIR=/usr/bin
+INSTALL_LIB_DIR=/usr/local/lib
+INSTALL_INCLUDE_DIR=/usr/local/include
 
-PKGCONFIG = $(shell which pkg-config)
+C_SOURCE=$(wildcard $(SRC_DIR)/*.c) $(wildcard $(SRC_DIR)/*/*.c)
+CXX_SOURCE=$(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/*/*.cpp)
 
-# compiler
-CC=g++
-# debug
+C_OBJECTS=$(patsubst %, $(BUILD_SRC)/%, $(C_SOURCE:.c=.o))
+CXX_OBJECTS=$(patsubst %, $(BUILD_SRC)/%, $(CXX_SOURCE:.cpp=.o))
+OBJECTS_DEP=$(CXX_OBJECTS) $(C_OBJECTS)
+
+
+#  COMPILER FLAGS  #
+CPP=g++
 DEBUG=-g
-# optimisation
 OPT=-O3
-# warnings
 WARN=-Wall
-
 PTHREAD=-pthread
+CPPFLAGS=$(DEBUG) $(OPT) $(WARN) $(PTHREAD) -std=c++11
 
-C_OBJECTS=$(patsubst ${SRC_DIR}/%.c, $(OUT_DIR)/%.o, $(wildcard ${SRC_DIR}/*.c))
-CPP_OBJECTS=$(patsubst ${SRC_DIR}/%.cpp, $(OUT_DIR)/%.o, $(wildcard ${SRC_DIR}/*.cpp))
-
-CCFLAGS=$(DEBUG) $(OPT) $(WARN) $(PTHREAD) -pipe -std=c++0x
-
+#  LINKER FLAGS  #
 LD=g++
-LFLAGS=-I${INCLUDE_DIR} -I${INCLUDE_LIB_DIR}
-LDFLAGS=$(PTHREAD) -lpaho-mqtt3as -L${INCLUDE_LIB_DIR} -ltahu 
+LFLAGS=-I${INCLUDE_DIR} -fPIC
+LDFLAGS=$(PTHREAD) -lpaho-mqtt3as -ltahu
 
-#    paho-mqtt3a - asynchronous (MQTTAsync)
-#    paho-mqtt3as - asynchronous with SSL/TLS (MQTTAsync)
-#    paho-mqtt3c - "classic" / synchronous (MQTTClient)
-#    paho-mqtt3cs - "classic" / synchronous with SSL/TLS (MQTTClient)
-
+#  UTILITY  #
 MKDIR_P = mkdir -p
 
-all: ${OUT_DIR} $(C_OBJECTS) $(CPP_OBJECTS)
-	$(LD) -o $(OUT_DIR)/$(TARGET) $(C_OBJECTS) $(CPP_OBJECTS) $(LDFLAGS) $(LFLAGS)
+.PHONY: all clean install
+
+all: ${BUILD_SRC} $(C_OBJECTS) $(CXX_OBJECTS)
+	${AR} ${ARFLAGS} $(BUILD_LIB)/${TARGET}.a $(OBJECTS_DEP)
+	$(LD) -shared -o $(BUILD_LIB)/$(TARGET).so $(OBJECTS_DEP) $(LDFLAGS) $(LFLAGS)
 
 install:
-	cp $(OUT_DIR)/$(TARGET) $(INSTALL_DIR)/$(TARGET)
+	${MKDIR_P} ${INSTALL_LIB_DIR}
+	${MKDIR_P} ${INSTALL_INCLUDE_DIR}
+	cp $(BUILD_LIB)/* $(INSTALL_LIB_DIR)/
+	cp $(INCLUDE_DIR)/*.h $(INSTALL_INCLUDE_DIR)/
+	find $(INCLUDE_DIR)/ -type d | grep -oP "$(INCLUDE_DIR)/\K.*" | xargs -i mkdir -p $(INSTALL_INCLUDE_DIR)/{}
+	find $(INCLUDE_DIR)/ -type f | grep -i h$ | grep -oP "$(INCLUDE_DIR)/\K.*" | xargs -i cp $(INCLUDE_DIR)/{} $(INSTALL_INCLUDE_DIR)/{}
 
-${OUT_DIR}:
-	${MKDIR_P} ${OUT_DIR}
+${BUILD_SRC}:
+	find $(SRC_DIR)/ -type d | grep -oP "$(SRC_DIR)/\K.*" | xargs -i mkdir -p $(BUILD_SRC)/{}
+	${MKDIR_P} ${BUILD_LIB}
 
-$(C_OBJECTS): ${OUT_DIR}/%.o : ${SRC_DIR}/%.c
-	$(CC) -c $< $(CCFLAGS) $(LFLAGS) $(LDFLAGS) -o $@
+$(C_OBJECTS): $(BUILD_SRC)/%.o : $(SRC_DIR)/%.c
+	$(CPP) -c $< $(CPPFLAGS) $(LFLAGS) -o $@
 
-$(CPP_OBJECTS): ${OUT_DIR}/%.o : ${SRC_DIR}/%.cpp
-	$(CC) -c $< $(CCFLAGS) $(LFLAGS) $(LDFLAGS) -o $@
+$(CXX_OBJECTS): $(BUILD_SRC)/%.o : $(SRC_DIR)/%.cpp
+	$(CPP) -c $< $(CPPFLAGS) $(LFLAGS) -o $@
 
 clean:
-	rm -f ${OUT_DIR}/*.o ${OUT_DIR}/*.c ${OUT_DIR}/*.cpp $(TARGET)
+	rm -rf ${BUILD_SRC} ${BUILD_LIB}
+

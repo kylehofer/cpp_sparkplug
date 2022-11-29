@@ -295,8 +295,18 @@ public:
      * @param cause The cause of the disconnection
      */
     void onDisconnect(SparkplugClient *client, char *cause);
+    /**
+     * @brief Returns whether the node has an activate broker it can publish with
+     * 
+     * @return true 
+     * @return false 
+     */
+    bool isActive();
     using Publisher::update;
     using Publisher::getPayload;
+    using Publisher::setMetrics;
+
+    void stop();
 };
 
 #endif /* INCLUDE_NODE */
