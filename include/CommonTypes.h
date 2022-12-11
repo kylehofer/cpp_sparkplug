@@ -1,7 +1,7 @@
 /*
- * File: Publisher.h
+ * File: CommonTypes.h
  * Project: sparkplug_c
- * Created Date: Wednesday November 30th 2022
+ * Created Date: Thursday December 1st 2022
  * Author: Kyle Hofer
  *
  * MIT License
@@ -29,22 +29,33 @@
  * HISTORY:
  */
 
-#ifndef INCLUDE_PUBLISHER
-#define INCLUDE_PUBLISHER
+#ifndef INCLUDE_COMMONTYPES
+#define INCLUDE_COMMONTYPES
 
-#include "Publishable.h"
+class Publishable;
 
-class Publisher
+typedef int DeliveryToken;
+
+/**
+ * @brief Struct for storing Sparkplug messages.
+ * Contains a pointer to the raw data along with the size of the data
+ */
+typedef struct
 {
-public:
-    /**
-     * @brief Requests the Publisher to prepare and send a PublishRequest to a SparkplugClient
-     *
-     * @param publishable The Publishable to use for the publish request
-     * @param isBirth If the message is a birth message
-     * @return returns 0 if the request was sent to the client successfully
-     */
-    virtual int requestPublish(Publishable *publishable, bool isBirth) = 0;
-};
+    void *payload;
+    int payloadlen;
+} SparkplugMessage;
 
-#endif /* INCLUDE_PUBLISHER */
+/**
+ * @brief Struct for handling the data required for publishing requests.
+ */
+typedef struct
+{
+    bool isBirth;
+    Publishable *publisher;
+    char *topic;
+    DeliveryToken token;
+    int retryCount;
+} PublishRequest;
+
+#endif /* INCLUDE_COMMONTYPES */

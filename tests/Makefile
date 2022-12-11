@@ -22,7 +22,7 @@ DEBUG=-g
 OPT=-O0
 WARN=-Wall
 PTHREAD=-pthread
-CPPFLAGS=$(DEBUG) $(OPT) $(WARN) $(PTHREAD) -std=c++11
+CPPFLAGS=$(DEBUG) $(OPT) $(WARN) $(PTHREAD) -std=c++14
 
 #  LINKER FLAGS  #  -fPIC
 LD=g++
@@ -46,6 +46,7 @@ run: all
 
 ${BUILD_TESTS}:
 	${MKDIR_P} ${BUILD_TESTS}
+	find $(TEST_DIR)/ -type d | grep -oP "$(TEST_DIR)/\K.*" | xargs -i mkdir -p $(BUILD_TESTS)/{}
 
 $(C_OBJECTS): $(BUILD_TESTS)/%.o : $(TEST_DIR)/%.c
 	$(CPP) -c $< $(CPPFLAGS) $(LFLAGS) -o $@

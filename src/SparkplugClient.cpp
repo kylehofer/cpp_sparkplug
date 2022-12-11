@@ -3,21 +3,21 @@
  * Project: cpp_sparkplug
  * Created Date: Friday November 18th 2022
  * Author: Kyle Hofer
- * 
+ *
  * MIT License
- * 
+ *
  * Copyright (c) 2022 Kyle Hofer
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
  * of the Software, and to permit persons to whom the Software is furnished to do
  * so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -25,7 +25,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
- * 
+ *
  * HISTORY:
  */
 
@@ -36,10 +36,11 @@ using namespace std;
 
 #define SPARKPLUGCLIENT_LOGGER cout << "Sparkplug Client: "
 
-SparkplugClient::SparkplugClient() : SparkplugClient(NULL, NULL) { }
+SparkplugClient::SparkplugClient()
+{
+}
 
-SparkplugClient::SparkplugClient(ClientEventHandler *handler, ClientOptions* options)
- : options(options), stateMutex(new mutex), state(DISCONNECTED), isPrimary(false), handler(handler), configured(false)
+SparkplugClient::SparkplugClient(ClientEventHandler *handler, ClientOptions *options) : options(options), handler(handler)
 {
 }
 
@@ -52,14 +53,6 @@ int SparkplugClient::configure(ClientTopicOptions *topics)
 {
     int returnCode;
 
-    returnCode = configureClient(options);
-
-    if (returnCode < 0)
-    {
-        SPARKPLUGCLIENT_LOGGER "Error configuring client\n";
-        return returnCode;
-    }
-
     if (topics == NULL)
     {
         SPARKPLUGCLIENT_LOGGER "Error: Client topics are not defined.\n";
@@ -68,8 +61,21 @@ int SparkplugClient::configure(ClientTopicOptions *topics)
 
     this->topics = topics;
 
+    returnCode = configureClient(options);
+
+    if (returnCode < 0)
+    {
+        SPARKPLUGCLIENT_LOGGER "Error configuring client\n";
+        return returnCode;
+    }
+
     configured = true;
     return 0;
+}
+
+ClientEventHandler *SparkplugClient::getHandler()
+{
+    return handler;
 }
 
 int SparkplugClient::activate()
@@ -102,7 +108,7 @@ int SparkplugClient::deactivate()
         return 0;
     }
     int returnCode;
-    
+
     returnCode = unsubscribeToCommands();
 
     if (returnCode < 0)
@@ -170,7 +176,7 @@ ClientState SparkplugClient::getState()
     return state;
 }
 
-int SparkplugClient::encodePayload(org_eclipse_tahu_protobuf_Payload* payload, uint8_t** buffer)
+int SparkplugClient::encodePayload(org_eclipse_tahu_protobuf_Payload *payload, uint8_t **buffer)
 {
     size_t length = MAX_BUFFER_LENGTH;
     *buffer = (uint8_t *)malloc(length * sizeof(uint8_t));
@@ -178,7 +184,7 @@ int SparkplugClient::encodePayload(org_eclipse_tahu_protobuf_Payload* payload, u
     return message_length;
 }
 
-void SparkplugClient::destroyRequest(PublishRequest* publishRequest)
+void SparkplugClient::destroyRequest(PublishRequest *publishRequest)
 {
     free(publishRequest->topic);
     free(publishRequest);
@@ -202,19 +208,19 @@ bool SparkplugClient::getPrimary()
     return isPrimary;
 }
 
-int SparkplugClient::publish(PublishRequest* publishRequest)
+int SparkplugClient::processRequest(PublishRequest *publishRequest)
 {
     lock_guard<mutex> lock(publishMutex);
-    
+
     if (getState() == DISCONNECTED)
     {
         SPARKPLUGCLIENT_LOGGER "Cannot publish payloads while disconnected\n";
         return -1;
     }
 
-    org_eclipse_tahu_protobuf_Payload* payload = publishRequest->publisher->getPayload(publishRequest->isBirth);
+    org_eclipse_tahu_protobuf_Payload *payload = publishRequest->publisher->getPayload(publishRequest->isBirth);
 
-    uint8_t* buffer;
+    uint8_t *buffer;
     int length = encodePayload(payload, &buffer);
 
     int returnCode = -1;
@@ -225,13 +231,12 @@ int SparkplugClient::publish(PublishRequest* publishRequest)
             publishRequest->topic,
             buffer,
             length,
-            &publishRequest->token
-        );
+            &publishRequest->token);
     }
 
-    free(buffer); 
-    free_payload(payload); 
-    free(payload); 
+    free(buffer);
+    free_payload(payload);
+    free(payload);
 
     return returnCode;
 }

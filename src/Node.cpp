@@ -35,6 +35,10 @@
 #include <chrono>
 #include <thread>
 #include <iostream>
+#include <algorithm>
+
+#include "Metrics/CallbackMetric.h"
+#include "CommonTypes.h"
 
 #define NDATA "NDATA"
 #define NBIRTH "NBIRTH"
@@ -56,29 +60,37 @@ using namespace std;
 
 #define SPARKPLUG_NAMESPACE "spBv1.0"
 
-/**
- * @brief Helper function to add node controls to a payload
- *
- * @param payload
- * @return org_eclipse_tahu_protobuf_Payload*
- */
-static org_eclipse_tahu_protobuf_Payload *addNodeControl(org_eclipse_tahu_protobuf_Payload *payload)
-{
-    bool next_server_value = false;
-    add_simple_metric(payload, "Node Control/Next Server", false, 0, METRIC_DATA_TYPE_BOOLEAN, false, false, &next_server_value, sizeof(next_server_value));
-    bool rebirth_value = false;
-    add_simple_metric(payload, "Node Control/Rebirth", false, 0, METRIC_DATA_TYPE_BOOLEAN, false, false, &rebirth_value, sizeof(rebirth_value));
-    bool reboot_value = false;
-    add_simple_metric(payload, "Node Control/Reboot", false, 0, METRIC_DATA_TYPE_BOOLEAN, false, false, &reboot_value, sizeof(reboot_value));
-    return payload;
-}
+#define NODE_CONTROL_REBIRTH_NAME "Node Control/Rebirth"
+#define NODE_CONTROL_REBOOT_NAME "Node Control/Reboot"
+#define NODE_CONTROL_NEXT_SERVER_NAME "Node Control/Next Server"
 
-Node::Node() : Node(NULL) {}
-Node::Node(NodeOptions *options) : Publisher(options != NULL ? options->publishPeriod : 30), topicsConfigured(false), enabled(false), deviceCount(0), activeClient(NULL), asyncLock(new mutex())
+Node::Node() : Node(NULL)
+{
+}
+Node::Node(NodeOptions *options) : Publishable()
 {
     if (options != NULL)
     {
+        Publishable::setPublishPeriod(options->publishPeriod);
         configureTopics(options->groupId, options->nodeId, options->primaryHost);
+
+        uint8_t commands = options->enabledCommands;
+
+        if (commands & NODE_CONTROL_REBIRTH)
+        {
+            nodeBirthMetric = new CallbackMetric(
+                NODE_CONTROL_REBIRTH_NAME,
+                false,
+                METRIC_DATA_TYPE_BOOLEAN,
+                [this](CallbackMetric *metric, org_eclipse_tahu_protobuf_Payload_Metric *payload)
+                {
+                    if (payload->value.boolean_value)
+                    {
+                        publishBirth();
+                    }
+                });
+            addMetric((Metric *)nodeBirthMetric);
+        }
     }
 }
 
@@ -105,6 +117,14 @@ Node::~Node()
         {
             free(clientTopics.primaryHostTopic);
         }
+        if (clientTopics.nodeDeathTopic != NULL)
+        {
+            free(clientTopics.nodeDeathTopic);
+        }
+    }
+    if (nodeBirthMetric != NULL)
+    {
+        delete nodeBirthMetric;
     }
 }
 
@@ -147,11 +167,9 @@ int Node::enable()
 void Node::publishBirth()
 {
     reset_sparkplug_sequence();
-    publish(true);
-    for (int8_t i = (deviceCount - 1); i >= 0; i--)
-    {
-        publish(devices[i], true);
-    }
+    publish(this, true);
+    for_each(devices.begin(), devices.end(), [this](Device *device)
+             { publish((Publishable *)device, true); });
 }
 
 void Node::configureTopics(const char *groupId, const char *nodeId, const char *primaryHost)
@@ -177,12 +195,17 @@ void Node::configureTopics(const char *groupId, const char *nodeId, const char *
         sprintf(nodeBaseTopic, NODE_TOPIC_BUILDER, SPARKPLUG_NAMESPACE, groupId, "\%s", nodeId);
         sprintf(deviceBaseTopic, DEVICE_TOPIC_BUILDER, SPARKPLUG_NAMESPACE, groupId, "\%s", nodeId, "\%s");
 
-        char *nodeCommandTopic, *deviceCommandTopic, *primaryHostTopic;
+        char *nodeCommandTopic, *deviceCommandTopic, *primaryHostTopic, *nodeDeathTopic;
 
         // 3 slashes, 4 for NCMD, 1 for null character
         miscSize = 3 + 4 + 1;
         nodeCommandTopic = (char *)malloc(nameSpaceSize + groupIdSize + nodeIdSize + miscSize);
         sprintf(nodeCommandTopic, NODE_TOPIC_BUILDER, SPARKPLUG_NAMESPACE, groupId, NCMD, nodeId);
+
+        // 3 slashes, 6 for NDEATH, 1 for null character
+        miscSize = 3 + 6 + 1;
+        nodeDeathTopic = (char *)malloc(nameSpaceSize + groupIdSize + nodeIdSize + miscSize);
+        sprintf(nodeDeathTopic, NODE_TOPIC_BUILDER, SPARKPLUG_NAMESPACE, groupId, NDEATH, nodeId);
 
         // 4 slashes, 4 for NCMD, 1 for +, 1 for null character
         miscSize = 4 + 4 + 1 + 1;
@@ -207,6 +230,7 @@ void Node::configureTopics(const char *groupId, const char *nodeId, const char *
 
         clientTopics = {
             nodeCommandTopic,
+            nodeDeathTopic,
             deviceCommandTopic,
             primaryHostTopic};
 
@@ -214,58 +238,54 @@ void Node::configureTopics(const char *groupId, const char *nodeId, const char *
     }
 }
 
-int Node::publish(bool isBirth = false)
+int Node::requestPublish(Publishable *publishable, bool isBirth)
 {
-    if (!this->canPublish() && !isBirth)
+    if (this == publishable)
     {
-        return 0;
+        return publish(publishable, isBirth);
     }
-
-    char *topic;
+    else if (any_of(devices.begin(), devices.end(), [publishable](Device *device)
+                    { return publishable == (Publishable *)device; }))
     {
-        char nodeMessageTopic[MAX_TOPIC_LENGTH];
-        sprintf(nodeMessageTopic, nodeBaseTopic, isBirth ? NBIRTH : NDATA);
-
-        size_t topicLength = strlen(nodeMessageTopic) + 1;
-
-        topic = (char *)malloc(topicLength);
-
-        strcpy(topic, nodeMessageTopic);
+        return publish(publishable, isBirth);
     }
-
-    PublishRequest *publishRequest = (PublishRequest *)malloc(sizeof(PublishRequest));
-    publishRequest->isBirth = isBirth;
-    publishRequest->publisher = (Publisher *)this;
-    publishRequest->topic = topic;
-
-    return clients.front()->requestPublish(publishRequest);
+    return 0;
 }
 
-int Node::publish(Device *device, bool isBirth = false)
+#define PREPARE_TOPIC(dest, src, ...)       \
+    {                                       \
+        char buffer[MAX_TOPIC_LENGTH];      \
+        sprintf(buffer, src, __VA_ARGS__);  \
+        size_t length = strlen(buffer) + 1; \
+        dest = (char *)malloc(length);      \
+        strcpy(topic, buffer);              \
+    }
+
+int Node::publish(Publishable *publishable, bool isBirth)
 {
-    if (!device->canPublish() && !isBirth)
+    if (!publishable->canPublish() && !isBirth)
     {
         return 0;
     }
 
+    publishable->publishing();
+
     char *topic;
+    if (publishable == this)
     {
-        char deviceMessageTopic[MAX_TOPIC_LENGTH];
-        sprintf(deviceMessageTopic, deviceBaseTopic, isBirth ? DBIRTH : DDATA, device->getName());
-
-        size_t topicLength = strlen(deviceMessageTopic) + 1;
-
-        topic = (char *)malloc(topicLength);
-
-        strcpy(topic, deviceMessageTopic);
+        PREPARE_TOPIC(topic, nodeBaseTopic, isBirth ? NBIRTH : NDATA);
+    }
+    else
+    {
+        PREPARE_TOPIC(topic, deviceBaseTopic, isBirth ? DBIRTH : DDATA, publishable->getName());
     }
 
     PublishRequest *publishRequest = (PublishRequest *)malloc(sizeof(PublishRequest));
     publishRequest->isBirth = isBirth;
-    publishRequest->publisher = (Publisher *)device;
+    publishRequest->publisher = (Publishable *)publishable;
     publishRequest->topic = topic;
 
-    return clients.front()->requestPublish(publishRequest);
+    return getActiveClient()->request(publishRequest);
 }
 
 void Node::setClientMode(SparkplugClientMode mode)
@@ -282,27 +302,34 @@ SparkplugClientMode Node::getClientMode()
 
 void Node::setActiveClient(SparkplugClient *activeClient)
 {
-    lock_guard<mutex> lock(*asyncLock);
+    asyncLock->lock();
 
-    if (activeClient == this->activeClient)
+    bool isActiveClientNew = activeClient != this->activeClient;
+    bool isActiveClientNull = this->activeClient == NULL;
+    bool isNextClientNull = activeClient == NULL;
+
+    asyncLock->unlock();
+
+    if (!isActiveClientNew)
     {
         return;
     }
 
-    if (this->activeClient != NULL)
+    if (!isActiveClientNull)
     {
         this->activeClient->deactivate();
     }
-
+    asyncLock->lock();
     this->activeClient = activeClient;
+    asyncLock->unlock();
 
-    if (activeClient != NULL)
+    if (!isNextClientNull)
     {
         publishBirth();
     }
 }
 
-void Node::activateClient(SparkplugClient* client)
+void Node::activateClient(SparkplugClient *client)
 {
     lock_guard<mutex> lock(*asyncLock);
 
@@ -317,7 +344,7 @@ void Node::activateClient(SparkplugClient* client)
     }
 }
 
-void Node::deactivateClient(SparkplugClient* client)
+void Node::deactivateClient(SparkplugClient *client)
 {
     bool isActiveClient;
     asyncLock->lock();
@@ -349,24 +376,21 @@ int32_t Node::execute(int32_t executeTime)
     {
         return EXECUTE_IDLE_DELAY;
     }
-    SparkplugClient *activeClient = getActiveClient();
     int32_t nextExecute = 0xFFFF;
     nextExecute = min(update(executeTime), nextExecute);
     if (canPublish())
     {
-        publish();
+        publish(this);
     }
 
-    for (int8_t i = (deviceCount - 1); i >= 0; i--)
-    {
-        Device *device = devices[i];
+    for_each(devices.begin(), devices.end(), [this, executeTime, &nextExecute](Device *device)
+             {
         nextExecute = min(device->update(executeTime), nextExecute);
 
         if (device->canPublish())
         {
-            publish(device);
-        }
-    }
+            publish((Publishable*) device);
+        } });
 
     return nextExecute;
 }
@@ -397,7 +421,7 @@ void Node::begin()
     }
 }
 
-SparkplugClient* Node::addClient(SparkplugClient *client)
+SparkplugClient *Node::addClient(SparkplugClient *client)
 {
     clients.push_back(client);
     return client;
@@ -408,10 +432,9 @@ int Node::nextServer()
     return 0;
 }
 
-void Node::setDevices(Device **things, int8_t count)
+void Node::addDevice(Device *device)
 {
-    this->devices = things;
-    this->deviceCount = count;
+    devices.push_front(device);
 }
 
 void Node::onDelivery(SparkplugClient *client, PublishRequest *request)
@@ -426,10 +449,42 @@ int Node::onMessage(SparkplugClient *client, const char *topicName, int topicLen
     {
         if (strstr(topicName, NCMD) != NULL)
         {
-            cout << "Node Command\n";
+            if (strcmp(topicName, clientTopics.nodeCommandTopic) == 0)
+            {
+                Publishable::handleCommand(this, message);
+            }
         }
         else if (strstr(topicName, DCMD) != NULL)
         {
+            if (devices.empty())
+            {
+                return 0;
+            }
+
+            // Take off 1 for the "+" wildcard
+            size_t deviceCommandPefixLength = strlen(clientTopics.deviceCommandTopic) - 1;
+            size_t deviceNameLength = topicLen - deviceCommandPefixLength;
+            if (deviceNameLength > 0)
+            {
+                // Add 1 for null character
+                char *deviceName = (char *)malloc(deviceNameLength + 1);
+                memcpy(deviceName, topicName + deviceCommandPefixLength, deviceNameLength);
+
+                forward_list<Device *>::iterator result;
+
+                result = find_if(devices.begin(), devices.end(), [deviceName](Device *device)
+                                 { return (strcmp(device->getName(), deviceName) == 0); });
+
+                if (result != devices.end())
+                {
+                    Publishable *publishable;
+                    publishable = (Publishable *)*result;
+                    // Handle Device Command
+                    publishable->handleCommand(this, message);
+                }
+
+                free(deviceName);
+            }
             cout << "Device Command\n";
         }
     }
@@ -495,11 +550,6 @@ void Node::onDisconnect(SparkplugClient *client, char *cause)
     // TODO: Disconnect Handler
 }
 
-org_eclipse_tahu_protobuf_Payload *Node::initializePayload(bool isBirth)
-{
-    return isBirth ? addNodeControl(Publisher::initializePayload(isBirth)) : Publisher::initializePayload(isBirth);
-}
-
 bool Node::isActive()
 {
     if (!enabled)
@@ -517,4 +567,13 @@ bool Node::isActive()
         return false;
     }
     return true;
+}
+
+void Node::onMetricCommand(CallbackMetric *caller, SparkplugMessage *message)
+{
+    // Metric* metric = (Metric*) caller;
+    // if (strcmp(metric->getName(), NODE_CONTROL_REBIRTH) == 0)
+    // {
+    //     this->publishBirth();
+    // }
 }
