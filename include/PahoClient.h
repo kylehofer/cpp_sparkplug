@@ -49,7 +49,6 @@ private:
     MQTTAsync client;
     MQTTAsync_connectOptions connectionOptions;
     queue<PublishRequest *> publishQueue;
-    std::mutex queueMutex;
     MQTTAsync_willOptions will = MQTTAsync_willOptions_initializer;
     /**
      * @brief Used to initiate a publish from the PublishRequest queue. If the queue is empty the Client will be set to a Connected State.

@@ -100,7 +100,6 @@ Node::~Node()
     {
         delete client;
     }
-    delete asyncLock;
     if (topicsConfigured)
     {
         free(nodeBaseTopic);
@@ -130,7 +129,6 @@ Node::~Node()
 
 void Node::connect()
 {
-    lock_guard<mutex> lock(*asyncLock);
     for (auto client : clients)
     {
         client->connect();
@@ -290,25 +288,19 @@ int Node::publish(Publishable *publishable, bool isBirth)
 
 void Node::setClientMode(SparkplugClientMode mode)
 {
-    lock_guard<mutex> lock(*asyncLock);
     this->hostMode = mode;
 }
 
 SparkplugClientMode Node::getClientMode()
 {
-    lock_guard<mutex> lock(*asyncLock);
     return hostMode;
 }
 
 void Node::setActiveClient(SparkplugClient *activeClient)
 {
-    asyncLock->lock();
-
     bool isActiveClientNew = activeClient != this->activeClient;
     bool isActiveClientNull = this->activeClient == NULL;
     bool isNextClientNull = activeClient == NULL;
-
-    asyncLock->unlock();
 
     if (!isActiveClientNew)
     {
@@ -319,9 +311,7 @@ void Node::setActiveClient(SparkplugClient *activeClient)
     {
         this->activeClient->deactivate();
     }
-    asyncLock->lock();
     this->activeClient = activeClient;
-    asyncLock->unlock();
 
     if (!isNextClientNull)
     {
@@ -331,8 +321,6 @@ void Node::setActiveClient(SparkplugClient *activeClient)
 
 void Node::activateClient(SparkplugClient *client)
 {
-    lock_guard<mutex> lock(*asyncLock);
-
     if (client == this->activeClient)
     {
         return;
@@ -347,9 +335,7 @@ void Node::activateClient(SparkplugClient *client)
 void Node::deactivateClient(SparkplugClient *client)
 {
     bool isActiveClient;
-    asyncLock->lock();
     isActiveClient = client != this->activeClient;
-    asyncLock->unlock();
 
     if (isActiveClient)
     {
@@ -361,7 +347,6 @@ void Node::deactivateClient(SparkplugClient *client)
 
 SparkplugClient *Node::getActiveClient()
 {
-    lock_guard<mutex> lock(*asyncLock);
     return activeClient;
 }
 

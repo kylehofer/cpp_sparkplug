@@ -36,8 +36,8 @@
 #include "CommonTypes.h"
 #include "Publisher.h"
 #include <tahu.h>
-#include <mutex>
 #include <forward_list>
+
 using namespace std;
 
 class Publisher;
@@ -65,7 +65,6 @@ private:
     int32_t publishPeriod;
     int32_t nextPublish;
     PublishableState state = IDLE;
-    mutex *asyncLock = new mutex();
 
     forward_list<Metric *> metrics;
 

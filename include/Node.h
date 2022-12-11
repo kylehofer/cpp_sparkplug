@@ -40,7 +40,6 @@
 #include <tahu.h>
 #include <vector>
 #include <queue>
-#include <mutex>
 #include <forward_list>
 #include "Metrics/CallbackMetric.h"
 
@@ -113,7 +112,6 @@ private:
     SparkplugClient *activeClient = NULL;
     SparkplugClientMode hostMode;
     vector<SparkplugClient *> clients;
-    mutex *asyncLock = new mutex();
     forward_list<Device *> devices;
 
     // Special Command Metrics

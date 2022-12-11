@@ -33,7 +33,6 @@
 #define INCLUDE_SPARKPLUGCLIENT
 
 #include <tahu.h>
-#include <mutex>
 #include "CommonTypes.h"
 #include "Publishable.h"
 
@@ -143,7 +142,6 @@ class SparkplugClient
 private:
     ClientOptions *options = NULL;
     bool configured = false;
-    std::mutex *stateMutex = new mutex();
     ClientState state = DISCONNECTED;
     bool isPrimary = false;
     ClientEventHandler *handler = NULL;
@@ -159,7 +157,6 @@ private:
 protected:
     ClientTopicOptions *topics;
 
-    std::mutex publishMutex;
     /**
      * @brief Get the ClientEventHandler
      *

@@ -46,7 +46,6 @@ SparkplugClient::SparkplugClient(ClientEventHandler *handler, ClientOptions *opt
 
 SparkplugClient::~SparkplugClient()
 {
-    delete stateMutex;
 }
 
 int SparkplugClient::configure(ClientTopicOptions *topics)
@@ -172,7 +171,6 @@ int SparkplugClient::disconnect()
 
 ClientState SparkplugClient::getState()
 {
-    lock_guard<mutex> lock(*stateMutex);
     return state;
 }
 
@@ -192,26 +190,21 @@ void SparkplugClient::destroyRequest(PublishRequest *publishRequest)
 
 void SparkplugClient::setState(ClientState state)
 {
-    lock_guard<mutex> lock(*stateMutex);
     this->state = state;
 }
 
 void SparkplugClient::setPrimary(bool isPrimary)
 {
-    lock_guard<mutex> lock(*stateMutex);
     this->isPrimary = isPrimary;
 }
 
 bool SparkplugClient::getPrimary()
 {
-    lock_guard<mutex> lock(*stateMutex);
     return isPrimary;
 }
 
 int SparkplugClient::processRequest(PublishRequest *publishRequest)
 {
-    lock_guard<mutex> lock(publishMutex);
-
     if (getState() == DISCONNECTED)
     {
         SPARKPLUGCLIENT_LOGGER "Cannot publish payloads while disconnected\n";

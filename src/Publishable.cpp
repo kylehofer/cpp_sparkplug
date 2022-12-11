@@ -31,14 +31,12 @@
 
 #include "Publishable.h"
 #include "Metrics/CommandMetric.h"
-#include <mutex>
 #include <algorithm>
 
 using namespace std;
 
 Publishable::~Publishable()
 {
-    delete asyncLock;
 }
 
 Publishable::Publishable() : Publishable(NULL, 30) {}
@@ -77,13 +75,11 @@ void Publishable::setPublishPeriod(int32_t publishPeriod)
 
 PublishableState Publishable::getState()
 {
-    lock_guard<mutex> lock(*asyncLock);
     return state;
 }
 
 void Publishable::setState(PublishableState state)
 {
-    lock_guard<mutex> lock(*asyncLock);
     this->state = state;
 }
 
@@ -137,7 +133,6 @@ void Publishable::handleCommand(Publisher *publisher, SparkplugMessage *message)
     org_eclipse_tahu_protobuf_Payload payload = org_eclipse_tahu_protobuf_Payload_init_zero;
     if (decode_payload(&payload, (uint8_t *)message->payload, message->payloadlen) < 0)
     {
-        fprintf(stderr, "Failed to decode the payload\n");
         free_payload(&payload);
         return;
     }
