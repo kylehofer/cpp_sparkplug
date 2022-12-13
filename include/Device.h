@@ -67,8 +67,12 @@ public:
      */
     Device(const char *name, int publishPeriod);
 
-    void onMetricCommand(CallbackMetric *metric, SparkplugMessage *message);
-
+    /**
+     * @brief Set the publisher responsible for this Device.
+     * Allows to device to request publishes for rebirths or COV metrics
+     * 
+     * @param publisher 
+     */
     void setPublisher(Publisher *publisher);
 
     using Publishable::addMetric;

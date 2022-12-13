@@ -7,7 +7,7 @@ ifneq "$(SUPPORTS_MAKE_ARGS)" ""
   $(eval $(COMMAND_ARGS):;@:)
 endif
 
-all: src
+all: src tests
 
 src:
 	make -C ./src $(COMMAND_ARGS)
@@ -18,8 +18,9 @@ tests:
 docker:
 	bash ./buildDocker.sh
 
-copy:
-	 sshpass -p $(PASSWORD) rsync -rav -e ssh --exclude='build/' --exclude='.git/' --exclude='temp/' ./ $(USER)@$(HOST):$(TARGET)
+clean:
+	make -C ./src clean
+	make -C ./tests clean
 
 # clean:
 # 	make clean -C ./src

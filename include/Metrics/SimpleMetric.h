@@ -3,6 +3,11 @@
 
 #include "Metrics/Metric.h"
 
+/**
+ * @brief Simple Metric implementation.
+ * Does not react to commands.
+ * 
+ */
 class SimpleMetric : public Metric
 {
 public:
@@ -31,6 +36,11 @@ public:
     template <typename T>
     SimpleMetric(const char *name, T data, uint8_t dataType) : Metric(name, &data, sizeof(T), dataType){};
 
+    /**
+     * @brief Does nothing when a command is received.
+     * 
+     * @param payload 
+     */
     void onCommand(org_eclipse_tahu_protobuf_Payload_Metric *payload){};
 };
 

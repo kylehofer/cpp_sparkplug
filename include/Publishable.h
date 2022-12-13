@@ -155,7 +155,7 @@ public:
      * @param publisher The publisher that the command was received from
      * @param message The message received
      */
-    void handleCommand(Publisher *publisher, SparkplugMessage *message);
+    void handleCommand(Publisher *publisher, void *payload, int payloadLength);
 };
 
 #endif /* INCLUDE_PUBLISHABLE */

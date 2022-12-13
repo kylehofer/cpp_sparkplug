@@ -179,7 +179,6 @@ TEST(NodeTests, enable)
     mockClient1 = (MockSparkplugClient *)nodeNoHost.addClient<MockSparkplugClient>(&clientOptions);
     mockClient2 = (MockSparkplugClient *)node.addClient<MockSparkplugClient>(&clientOptions);
     mockClient3 = (MockSparkplugClient *)nodeFailClientConfig.addClient<MockSparkplugClient>(&clientOptions);
-    // node.addClient<MockSparkplugClient>(&clientOptions);
 
     EXPECT_CALL(*mockClient1, configureClient(&clientOptions)).WillOnce([mockClient1](ClientOptions *options)
                                                                         { return 0; });
@@ -242,31 +241,37 @@ TEST(NodeTests, executeHappyPrimaryTest)
 
     EXPECT_EQ(node.execute(0), 1) << "Client is connected, however the node is still waiting for primary host to activate the client.";
 
-    SparkplugMessage message = {
-        .payload = (char *)"ONLINE",
-        .payloadlen = 7};
-
     EXPECT_CALL(*mockClient, subscribeToCommands()).WillOnce([mockClient]()
                                                              { return 0; });
 
     const char primaryHostTopic[] = "STATE/PrimaryHost";
 
-    node.onMessage(mockClient, primaryHostTopic, 18, &message);
+    {
+        MessageEventStruct messageEvent = {
+            primaryHostTopic, 18, (char *)"ONLINE", 7};
+
+        node.onEvent(mockClient, CLIENT_MESSAGE, &messageEvent);
+    }
 
     EXPECT_EQ(node.execute(0), 1) << "Client is connected, Primary Host message received, waiting for command subscription";
 
-    PublishRequest *requestedPublish;
+    PublishRequest *requestedPublish = nullptr;
 
     // We should expect a birth message
     EXPECT_CALL(*mockClient, request(NotNull())).WillOnce([&](PublishRequest *publishRequest)
                                                           {
+        
         requestedPublish = publishRequest;
         return 0; });
 
     // Sending our activation back, aka command subscription success
     mockClient->active();
 
-    EXPECT_NE(requestedPublish, nullptr);
+    ASSERT_EQ(requestedPublish, nullptr);
+
+    node.sync();
+
+    ASSERT_NE(requestedPublish, nullptr);
     EXPECT_EQ(requestedPublish->isBirth, true);
     EXPECT_EQ(requestedPublish->publisher, (Publishable *)&node);
     EXPECT_STREQ(requestedPublish->topic, "spBv1.0/GroupId/NBIRTH/NodeId");
@@ -284,10 +289,9 @@ TEST(NodeTests, executeHappyPrimaryTest)
 
     EXPECT_EQ(node.execute(5), 5) << "A live publish should be active, timer should be held.";
 
-    node.onDelivery(mockClient, requestedPublish);
+    node.onEvent(mockClient, CLIENT_DELIVERED, (Publishable *)&node);
 
     EXPECT_EQ(node.execute(2), 3) << "Publish has been acknowledged, time should decrement now";
-
     SparkplugClient::destroyRequest(requestedPublish);
 
     EXPECT_EQ(node.execute(5), 5) << "No new data to publish, so timer should lock at 5";
@@ -337,18 +341,19 @@ TEST(NodeTests, executeHappyTest)
 
     EXPECT_EQ(node.execute(0), 1) << "Client is connected, and waiting for commands to subscribe.";
 
-    SparkplugMessage message = {
-        .payload = (char *)"ONLINE",
-        .payloadlen = 7};
-
     const char primaryHostTopic[] = "STATE/PrimaryHost";
 
     // Sending message should have no affect
-    node.onMessage(mockClient, primaryHostTopic, 18, &message);
+    {
+        MessageEventStruct messageEvent = {
+            primaryHostTopic, 18, (char *)"ONLINE", 7};
+
+        node.onEvent(mockClient, CLIENT_MESSAGE, &messageEvent);
+    }
 
     EXPECT_EQ(node.execute(0), 1) << "Client is connected, Primary Host message received, waiting for command subscription";
 
-    PublishRequest *requestedPublish;
+    PublishRequest *requestedPublish = nullptr;
 
     // We should expect a birth message
     EXPECT_CALL(*mockClient, request(NotNull())).WillOnce([&](PublishRequest *publishRequest)
@@ -359,7 +364,11 @@ TEST(NodeTests, executeHappyTest)
     // Sending our activation back, aka command subscription success
     mockClient->active();
 
-    EXPECT_NE(requestedPublish, nullptr);
+    ASSERT_EQ(requestedPublish, nullptr);
+
+    node.sync();
+
+    ASSERT_NE(requestedPublish, nullptr);
     EXPECT_EQ(requestedPublish->isBirth, true);
     EXPECT_EQ(requestedPublish->publisher, (Publishable *)&node);
     EXPECT_STREQ(requestedPublish->topic, "spBv1.0/GroupId/NBIRTH/NodeId");
@@ -377,7 +386,7 @@ TEST(NodeTests, executeHappyTest)
 
     EXPECT_EQ(node.execute(5), 5) << "A live publish should be active, timer should be held.";
 
-    node.onDelivery(mockClient, requestedPublish);
+    node.onEvent(mockClient, CLIENT_DELIVERED, (Publishable *)&node);
 
     EXPECT_EQ(node.execute(2), 3) << "Publish has been acknowledged, time should decrement now";
 

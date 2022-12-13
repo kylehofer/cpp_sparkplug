@@ -41,7 +41,7 @@ typedef struct
 {
     char *topic;
     void *payload;
-    int payloadlen;
+    int payloadLength;
 
 } PayloadMessage;
 

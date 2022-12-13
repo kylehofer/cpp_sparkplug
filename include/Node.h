@@ -39,7 +39,7 @@
 #include "SparkplugClient.h"
 #include <tahu.h>
 #include <vector>
-#include <queue>
+#include <deque>
 #include <forward_list>
 #include "Metrics/CallbackMetric.h"
 
@@ -94,6 +94,12 @@ typedef struct
     int enabledCommands;
 } NodeOptions;
 
+typedef struct {
+    SparkplugClient *client;
+    EventType eventType;
+    void *data;
+} ClientEventData;
+
 /**
  * @brief A Class representation of a Sparkplug Node.
  * Behaves as a Publishable for publishing Sparkplug Metrics.
@@ -113,6 +119,7 @@ private:
     SparkplugClientMode hostMode;
     vector<SparkplugClient *> clients;
     forward_list<Device *> devices;
+    deque<ClientEventData> eventQueue; 
 
     // Special Command Metrics
     CallbackMetric *nodeBirthMetric = NULL;
@@ -186,11 +193,24 @@ private:
      */
     SparkplugClient *addClient(SparkplugClient *client);
     /**
-     * @brief Request all clients to connect to a MQTT Server.
-     * Will be called every execute to assure all clients are connected for publishing
+     * @brief A callback for when a client has received a message on one of its subscribed topics. This should only occur for
+     * Node/Device commands, and updates to the Primary host topic (if configured). Commands are passed to the Publishable who owns the Metric.
+     * If the Node is configured for a Primary Host then the Active client will change to match the Primary Host.
+     *
+     * @param client The client responsible for the message
+     * @param topicName The topic name of the message
+     * @param topicLength The length of the topic string
+     * @param payload The payload buffer containing the raw data
+     * @param payloadLength The length of the payload
+     * @return int
      */
-    void connect();
-
+    int onMessage(SparkplugClient *client, const char *topicName, int topicLength, void *payload, int payloadLength);
+    /**
+     * @brief Processes all events that were received and queued from onEvent.
+     * This function is thread safe.
+     */
+    void processEvents();
+protected:
 public:
     /**
      * @brief Construct a new Sparkplug Node
@@ -234,6 +254,7 @@ public:
      * @return int32_t the minimum time before any Publishable needs to Publish again.
      */
     int32_t execute(int32_t executeTime);
+    void sync();
     /**
      * @brief TODO: Implement. It should switch to the next client in the list.
      *
@@ -247,53 +268,6 @@ public:
      * @param deviceCount The number of Devices being added
      */
     void addDevice(Device *device);
-    /**
-     * @brief A callback function that is called by Clients when a Publish request has been delivered.
-     * This will mark the Publishable as publisher, resetting its publish time.
-     *
-     * @param client The client responsible for the delivery
-     * @param request PublishRequest
-     */
-    void onDelivery(SparkplugClient *client, PublishRequest *request);
-    /**
-     * @brief A callback for when a client has received a message on one of its subscribed topics. This should only occur for
-     * Node/Device commands, and updates to the Primary host topic (if configured). Commands are passed to the Publishable who owns the Metric.
-     * If the Node is configured for a Primary Host then the Active client will change to match the Primary Host.
-     *
-     * @param client The client responsible for the message
-     * @param topicName The topic name of the message
-     * @param topicLen The length of the topic string
-     * @param message The SparkplugMessage struct containing the raw data
-     * @return int
-     */
-    int onMessage(SparkplugClient *client, const char *topicName, int topicLen, SparkplugMessage *message);
-    /**
-     * @brief A callback when a client has been succesfully activated. This client will then be used as the activate client and
-     * messages will start publishing from this client.
-     *
-     * @param client
-     */
-    void onActive(SparkplugClient *client);
-    /**
-     * @brief A callback when a client has been succesfully deactivated.
-     *
-     * @param client The client responsible for the deactivation
-     */
-    void onDeactive(SparkplugClient *client);
-    /**
-     * @brief A callback when a client has succesfully connected to a MQTT Host. If the node is configured without a primary host the client
-     * will be activated as the primary client.
-     *
-     * @param client The client responsible for the connection
-     */
-    void onConnect(SparkplugClient *client);
-    /**
-     * @brief A callback when a client has disconnected from a MQTT Host.
-     *
-     * @param client The client responsible for the disconnection
-     * @param cause The cause of the disconnection
-     */
-    void onDisconnect(SparkplugClient *client, char *cause);
     /**
      * @brief Returns whether the node has an activate broker it can publish with
      *
@@ -318,7 +292,15 @@ public:
      */
     int requestPublish(Publishable *publishable, bool isBirth = false);
 
-    void onMetricCommand(CallbackMetric *metric, SparkplugMessage *message);
+    /**
+     * @brief Called by all SparkplugClients when they when MQTT events occur.
+     * Events are queued and then processed later in a thread safe manner. 
+     * 
+     * @param client The client responsible for the event
+     * @param eventType
+     * @param data Optional data that accompanies the event.
+     */
+    void onEvent(SparkplugClient *client, EventType eventType, void* data);
 
     using Publishable::addMetric;
     using Publishable::canPublish;

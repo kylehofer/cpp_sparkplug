@@ -30,8 +30,8 @@
  */
 
 #include "Publishable.h"
-#include "Metrics/CommandMetric.h"
 #include <algorithm>
+#include <cstdio>
 
 using namespace std;
 
@@ -127,21 +127,19 @@ const char *Publishable::getName()
     return name;
 }
 
-void Publishable::handleCommand(Publisher *publisher, SparkplugMessage *message)
+void Publishable::handleCommand(Publisher *publisher, void *payload, int payloadLength)
 {
     // Decode the payload
-    org_eclipse_tahu_protobuf_Payload payload = org_eclipse_tahu_protobuf_Payload_init_zero;
-    if (decode_payload(&payload, (uint8_t *)message->payload, message->payloadlen) < 0)
+    org_eclipse_tahu_protobuf_Payload sparkplugPayload = org_eclipse_tahu_protobuf_Payload_init_zero;
+    if (decode_payload(&sparkplugPayload, (uint8_t *)payload, payloadLength) < 0)
     {
-        free_payload(&payload);
+        free_payload(&sparkplugPayload);
         return;
     }
 
-    // for_each(metrics.begi(), metrics.end(), [])
-
-    for (int i = payload.metrics_count - 1; i >= 0; i--)
+    for (int i = sparkplugPayload.metrics_count - 1; i >= 0; i--)
     {
-        org_eclipse_tahu_protobuf_Payload_Metric metricPayload = payload.metrics[i];
+        org_eclipse_tahu_protobuf_Payload_Metric metricPayload = sparkplugPayload.metrics[i];
         char *name = metricPayload.name;
         forward_list<Metric *>::iterator result;
 
@@ -150,12 +148,12 @@ void Publishable::handleCommand(Publisher *publisher, SparkplugMessage *message)
 
         if (result != metrics.end())
         {
-            Metric *commandMetric;
-            commandMetric = *result;
+            Metric *metric;
+            metric = *result;
             // Handle Device Command
-            commandMetric->onCommand(&metricPayload);
+            metric->onCommand(&metricPayload);
         }
     }
 
-    free_payload(&payload);
+    free_payload(&sparkplugPayload);
 }

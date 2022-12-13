@@ -240,13 +240,13 @@ void SparkplugClient::activated()
     {
         return;
     }
-    handler->onActive(this);
+    handler->onEvent(this, CLIENT_ACTIVE, nullptr);
 }
 
 void SparkplugClient::connected()
 {
     setState(CONNECTED);
-    handler->onConnect(this);
+    handler->onEvent(this, CLIENT_CONNECTED, nullptr);
     if (topics->primaryHostTopic != NULL)
     {
         subscribeToPrimaryHost();
@@ -256,5 +256,27 @@ void SparkplugClient::connected()
 void SparkplugClient::disconnected(char *cause)
 {
     setState(DISCONNECTED);
-    handler->onDisconnect(this, cause);
+    handler->onEvent(this, CLIENT_DISCONNECTED, nullptr);
+}
+
+void SparkplugClient::delivered(PublishRequest *publishRequest)
+{
+    handler->onEvent(this, CLIENT_DELIVERED, publishRequest->publisher);
+    SparkplugClient::destroyRequest(publishRequest);
+}
+
+void SparkplugClient::messageReceived(const char *topicName, int topicLength, void *payload, int payloadLength)
+{
+    MessageEventStruct messageEvent = {
+        topicName, topicLength, payload, payloadLength
+    };
+    handler->onEvent(this, CLIENT_MESSAGE, &messageEvent);
+}
+
+void SparkplugClient::execute()
+{
+    if (connect() == 0)
+    {
+        sync();
+    }
 }

@@ -62,14 +62,14 @@ static void deliveryFailure(void *context, MQTTAsync_failureData *response)
  *
  * @param context
  * @param topicName
- * @param topicLen
+ * @param topicLength
  * @param message
  * @return int
  */
-static int messageArrived(void *context, char *topicName, int topicLen, MQTTAsync_message *message)
+static int messageArrived(void *context, char *topicName, int topicLength, MQTTAsync_message *message)
 {
     PahoClient *client = (PahoClient *)context;
-    return client->onMessage(topicName, topicLen, message);
+    return client->onMessage(topicName, topicLength, message);
 }
 
 /**
@@ -339,19 +339,12 @@ void PahoClient::dumpQueue()
     }
 }
 
-int PahoClient::onMessage(char *topicName, int topicLen, MQTTAsync_message *message)
+int PahoClient::onMessage(char *topicName, int topicLength, MQTTAsync_message *message)
 {
     ClientEventHandler *handler = getHandler();
     if (handler != NULL)
     {
-        // SparkplugMessage* sparkplugMessage = (SparkplugMessage*) malloc(sizeof(SparkplugMessage));
-        SparkplugMessage sparkplugMessage = {
-            message->payload,
-            message->payloadlen};
-        // sparkplugMessage->payload = message->payload;
-        // sparkplugMessage->payloadlen = message->payloadlen;
-        handler->onMessage(this, topicName, topicLen, &sparkplugMessage);
-        // free(sparkplugMessage);
+        messageReceived(topicName, topicLength, message->payload, message->payloadlen);
         MQTTAsync_freeMessage(&message);
     }
     return 1;
@@ -362,13 +355,8 @@ void PahoClient::onDelivery(DeliveryToken token)
     PublishRequest *publishRequest = publishQueue.front();
     if (publishRequest->token == token)
     {
-        ClientEventHandler *handler = getHandler();
         publishQueue.pop();
-        if (handler != NULL)
-        {
-            handler->onDelivery(this, publishRequest);
-        }
-        SparkplugClient::destroyRequest(publishRequest);
+        delivered(publishRequest);
         publishFromQueue();
     }
     else
@@ -391,9 +379,8 @@ void PahoClient::onDeliveryFailure(DeliveryToken token)
         if (publishRequest->retryCount >= PUBLISH_RETRIES)
         {
             publishQueue.pop();
-            {
-                getHandler()->onDelivery(this, publishRequest);
-            }
+            // TODO: Failed to deliver
+            // delivered(publishRequest);
             SparkplugClient::destroyRequest(publishRequest);
             publishFromQueue();
         }

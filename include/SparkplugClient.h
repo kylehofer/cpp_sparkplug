@@ -40,6 +40,22 @@
 #define MAX_BUFFER_LENGTH 512
 #define PUBLISH_RETRIES 5
 
+enum EventType {
+    CLIENT_MESSAGE,
+    CLIENT_CONNECTED,
+    CLIENT_DISCONNECTED,
+    CLIENT_ACTIVE,
+    CLIENT_DEACTIVE,
+    CLIENT_DELIVERED
+};
+
+typedef struct {
+    const char *topicName;
+    int topicLength;
+    void *payload;
+    int payloadLength;
+} MessageEventStruct;
+
 class SparkplugClient;
 
 /**
@@ -50,48 +66,7 @@ class ClientEventHandler
 private:
 protected:
 public:
-    /**
-     * @brief Callback method for when a SparkplugRequest has been delivered on a client.
-     *
-     * @param client The client responsible for the callback
-     * @param request PublishRequest
-     */
-    virtual void onDelivery(SparkplugClient *client, PublishRequest *request) = 0;
-    /**
-     * @brief
-     *
-     * @param client The client responsible for the callback
-     * @param topicName The topic name of the message
-     * @param topicLen The length of the topic string
-     * @param message The SparkplugMessage struct containing the raw data
-     * @return int
-     */
-    virtual int onMessage(SparkplugClient *client, const char *topicName, int topicLen, SparkplugMessage *message) = 0;
-    /**
-     * @brief A callback when a client has been succesfully activated. An active client is when it has subscribed to required command topics.
-     *
-     * @param client The client responsible for the callback
-     */
-    virtual void onActive(SparkplugClient *client) = 0;
-    /**
-     * @brief A callback when a client has been succesfully deactivated.
-     *
-     * @param client The client responsible for the callback
-     */
-    virtual void onDeactive(SparkplugClient *client) = 0;
-    /**
-     * @brief A callback when a client has succesfully connected to a MQTT Host.
-     *
-     * @param client The client responsible for the callback
-     */
-    virtual void onConnect(SparkplugClient *client) = 0;
-    /**
-     * @brief A callback when a client has disconnected to a MQTT Host.
-     *
-     * @param client The client responsible for the callback
-     * @param cause
-     */
-    virtual void onDisconnect(SparkplugClient *client, char *cause) = 0;
+    virtual void onEvent(SparkplugClient *client, EventType eventType, void* data) = 0;
 };
 
 typedef int DeliveryToken;
@@ -240,6 +215,8 @@ protected:
      *
      * @param state
      */
+    void delivered(PublishRequest *publishRequest);
+    void messageReceived(const char *topicName, int topicLength, void *payload, int payloadLength);
     void setState(ClientState state);
     /**
      * @brief Sets the SparkplugClient as the Primary Client
@@ -324,6 +301,18 @@ public:
      * @param publishRequest
      */
     static void destroyRequest(PublishRequest *publishRequest);
+
+    /**
+     * @brief Assures the SparkplugClient is connected and synced to the broker.
+     * Called by the node on every execute.
+     */
+    void execute();
+
+    /**
+     * @brief Syncs the SparkplugClient assuring all data and callbacks have fired.
+     * Used for Synchronous MQTT Clients.
+     */
+    virtual void sync() = 0;
 };
 
 #endif /* INCLUDE_SPARKPLUGCLIENT */

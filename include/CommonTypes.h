@@ -37,16 +37,6 @@ class Publishable;
 typedef int DeliveryToken;
 
 /**
- * @brief Struct for storing Sparkplug messages.
- * Contains a pointer to the raw data along with the size of the data
- */
-typedef struct
-{
-    void *payload;
-    int payloadlen;
-} SparkplugMessage;
-
-/**
  * @brief Struct for handling the data required for publishing requests.
  */
 typedef struct
