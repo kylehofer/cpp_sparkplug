@@ -28,7 +28,7 @@
  *
  * HISTORY:
  */
-#include "Metric.h"
+#include "Metrics/Metric.h"
 #include <iostream>
 
 Metric::~Metric()
@@ -37,7 +37,7 @@ Metric::~Metric()
     free(data);
 }
 
-Metric::Metric(const char *name, void *data, size_t size, uint8_t dataType) : dataType(dataType), dirty(false), alias(0)
+Metric::Metric(const char *name, void *data, size_t size, uint8_t dataType) : dataType(dataType)
 {
     this->name = strdup(name);
     this->data = malloc(size);
@@ -71,7 +71,12 @@ void Metric::published()
     dirty = false;
 }
 
-void* Metric::getData()
+void *Metric::getData()
 {
     return data;
+}
+
+const char *Metric::getName()
+{
+    return name;
 }

@@ -1,15 +1,12 @@
 # A simple Dockerfile that might be used to compile the project
 # for running isolated tests
 
-FROM gcc:latest as builder
+FROM debian:latest as builder
 
-COPY ./include /cpp_sparkplug/include
-COPY ./src /cpp_sparkplug/src
-COPY ./tests /cpp_sparkplug/tests
+RUN apt update && apt install -y build-essential git cmake libmosquitto-dev libgtest-dev mosquitto psmisc valgrind libssl-dev
 
 RUN mkdir -p /install/usr/include/ /install/usr/lib/ && \
     git clone https://github.com/eclipse/paho.mqtt.c.git && \
-    apt update && apt install -y cmake libmosquitto-dev libgtest-dev mosquitto && \
     cd paho.mqtt.c && git checkout v1.3.8 && \
     cmake -Bbuild -H. -DPAHO_ENABLE_TESTING=OFF -DPAHO_BUILD_STATIC=ON -DPAHO_WITH_SSL=ON -DPAHO_HIGH_PERFORMANCE=ON && \
     cmake --build build/ --target package && \
@@ -24,4 +21,10 @@ RUN cd /usr/src/gtest && cmake CMakeLists.txt && make && cp lib/*.a /install/usr
 
 RUN cp -r /install/* /
 
-CMD [/bin/bash]
+ENV LD_LIBRARY_PATH=/usr/local/lib:/cpp_sparkplug/build/lib
+
+COPY ./ /cpp_sparkplug/
+
+WORKDIR /cpp_sparkplug
+
+ENTRYPOINT ["/bin/bash"]

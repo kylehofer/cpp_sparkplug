@@ -3,21 +3,21 @@
  * Project: cpp_sparkplug
  * Created Date: Friday November 18th 2022
  * Author: Kyle Hofer
- * 
+ *
  * MIT License
- * 
+ *
  * Copyright (c) 2022 Kyle Hofer
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
  * of the Software, and to permit persons to whom the Software is furnished to do
  * so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -25,13 +25,12 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
- * 
+ *
  * HISTORY:
  */
 
 #include "PahoClient.h"
 #include <iostream>
-
 
 #define QOS 1
 
@@ -85,49 +84,38 @@ static void connectionLost(void *context, char *cause)
     client->onDisconnect(cause);
 }
 
-void connectionFailure(void* context, MQTTAsync_failureData* response)
+void connectionFailure(void *context, MQTTAsync_failureData *response)
 {
     PahoClient *client = (PahoClient *)context;
     client->onConnectFailure(response->code);
 }
 
-static void connectionSuccess(void* context, MQTTAsync_successData* response)
+static void connectionSuccess(void *context, MQTTAsync_successData *response)
 {
     PahoClient *client = (PahoClient *)context;
     client->onConnect();
 }
 
-static void onSubscribeSuccess(void* context, MQTTAsync_successData* response)
+static void onSubscribeSuccess(void *context, MQTTAsync_successData *response)
 {
-    PahoClient *client = (PahoClient *)context;
+    // PahoClient *client = (PahoClient *)context;
 }
 
-static void onSubscribeFailure(void* context, MQTTAsync_failureData* response)
+static void onSubscribeFailure(void *context, MQTTAsync_failureData *response)
 {
-    PahoClient *client = (PahoClient *)context;
+    // PahoClient *client = (PahoClient *)context;
 }
 
-static void onCommandSubscribeSuccess(void* context, MQTTAsync_successData* response)
+static void onCommandSubscribeSuccess(void *context, MQTTAsync_successData *response)
 {
     PahoClient *client = (PahoClient *)context;
 
     client->onCommandSubscription();
 }
 
-static void onCommandSubscribeFailure(void* context, MQTTAsync_failureData* response)
+static void onCommandSubscribeFailure(void *context, MQTTAsync_failureData *response)
 {
-    PahoClient *client = (PahoClient *)context;
-}
-
-static void onSubscribeHostSuccess(void* context, MQTTAsync_successData* response)
-{
-    PahoClient *client = (PahoClient *)context;
-}
-
-
-static void onSubscribeHostFailure(void* context, MQTTAsync_failureData* response)
-{
-    PahoClient *client = (PahoClient *)context;
+    // PahoClient *client = (PahoClient *)context;
 }
 
 int PahoClient::clientConnect()
@@ -154,7 +142,7 @@ int PahoClient::clientDisconnect()
 {
     MQTTAsync_disconnectOptions disconnectOptions = MQTTAsync_disconnectOptions_initializer;
 
-    disconnectOptions.timeout = 10000;
+    disconnectOptions.timeout = 0;
 
     setState(DISCONNECTING);
 
@@ -176,7 +164,7 @@ int PahoClient::subscribeToPrimaryHost()
     subscribeOptions.context = this;
     subscribeOptions.onSuccess = onSubscribeSuccess;
     subscribeOptions.onFailure = onSubscribeFailure;
-    
+
     returnCode = MQTTAsync_subscribe(client, topics->primaryHostTopic, QOS, &subscribeOptions);
 
     if (returnCode != MQTTASYNC_SUCCESS)
@@ -187,7 +175,7 @@ int PahoClient::subscribeToPrimaryHost()
         return returnCode;
     }
 
-    return 0; 
+    return 0;
 }
 
 int PahoClient::subscribeToCommands()
@@ -198,9 +186,9 @@ int PahoClient::subscribeToCommands()
     subscribeOptions.context = this;
     subscribeOptions.onSuccess = onCommandSubscribeSuccess;
     subscribeOptions.onFailure = onCommandSubscribeFailure;
-    
-    char* const commandTopics[2] = { topics->nodeCommandTopic, topics->deviceCommandTopic };
-    int qos[] = { QOS, QOS };
+
+    char *const commandTopics[2] = {topics->nodeCommandTopic, topics->deviceCommandTopic};
+    int qos[] = {QOS, QOS};
 
     returnCode = MQTTAsync_subscribeMany(client, 2, commandTopics, qos, &subscribeOptions);
 
@@ -219,8 +207,7 @@ int PahoClient::unsubscribeToCommands()
 {
     int returnCode;
 
-    char* const commandTopics[2] = { topics->nodeCommandTopic, topics->deviceCommandTopic };
-    int qos[] = { QOS, QOS };
+    char *const commandTopics[2] = {topics->nodeCommandTopic, topics->deviceCommandTopic};
 
     returnCode = MQTTAsync_unsubscribeMany(client, 2, commandTopics, NULL);
 
@@ -235,7 +222,7 @@ int PahoClient::unsubscribeToCommands()
     return 0;
 }
 
-int PahoClient::publishMessage(const char* topic, uint8_t* buffer, size_t length, DeliveryToken* token)
+int PahoClient::publishMessage(const char *topic, uint8_t *buffer, size_t length, DeliveryToken *token)
 {
     MQTTAsync_responseOptions responseOptions = MQTTAsync_responseOptions_initializer;
 
@@ -248,14 +235,13 @@ int PahoClient::publishMessage(const char* topic, uint8_t* buffer, size_t length
     {
         *token = responseOptions.token;
     }
-    else 
+    else
     {
         // TODO: Async Failure
     }
     return returnCode;
 }
-
-int PahoClient::configureClient(ClientOptions* options)
+int PahoClient::configureClient(ClientOptions *options)
 {
     int returnCode;
 
@@ -274,8 +260,7 @@ int PahoClient::configureClient(ClientOptions* options)
         client, this,
         connectionLost,
         messageArrived,
-        deliveryComplete
-    );
+        deliveryComplete);
 
     if (returnCode != MQTTASYNC_SUCCESS)
     {
@@ -300,12 +285,19 @@ int PahoClient::configureClient(ClientOptions* options)
     connectionOptions.cleansession = 1;
     connectionOptions.automaticReconnect = true;
 
+    will.qos = 0;
+    will.retained = 0;
+    will.topicName = topics->nodeDeathTopic;
+    will.message = NULL;
+
+    connectionOptions.will = &will;
+
     return 0;
 }
 
-PahoClient::PahoClient() : SparkplugClient() { }
+PahoClient::PahoClient() : SparkplugClient() {}
 
-PahoClient::PahoClient(ClientEventHandler *handler, ClientOptions* options) : SparkplugClient(handler, options) { }
+PahoClient::PahoClient(ClientEventHandler *handler, ClientOptions *options) : SparkplugClient(handler, options) {}
 
 PahoClient::~PahoClient()
 {
@@ -327,7 +319,7 @@ void PahoClient::publishFromQueue()
 {
     if (getPrimary() && publishQueue.size() > 0)
     {
-        publish(publishQueue.front());
+        processRequest(publishQueue.front());
     }
     else
     {
@@ -349,13 +341,17 @@ void PahoClient::dumpQueue()
 
 int PahoClient::onMessage(char *topicName, int topicLen, MQTTAsync_message *message)
 {
+    ClientEventHandler *handler = getHandler();
     if (handler != NULL)
     {
-        SparkplugMessage* sparkplugMessage = (SparkplugMessage*) malloc(sizeof(SparkplugMessage));
-        sparkplugMessage->payload = message->payload;
-        sparkplugMessage->payloadlen = message->payloadlen;
-        handler->onMessage(this, topicName, topicLen, sparkplugMessage);
-        free(sparkplugMessage);
+        // SparkplugMessage* sparkplugMessage = (SparkplugMessage*) malloc(sizeof(SparkplugMessage));
+        SparkplugMessage sparkplugMessage = {
+            message->payload,
+            message->payloadlen};
+        // sparkplugMessage->payload = message->payload;
+        // sparkplugMessage->payloadlen = message->payloadlen;
+        handler->onMessage(this, topicName, topicLen, &sparkplugMessage);
+        // free(sparkplugMessage);
         MQTTAsync_freeMessage(&message);
     }
     return 1;
@@ -363,9 +359,10 @@ int PahoClient::onMessage(char *topicName, int topicLen, MQTTAsync_message *mess
 
 void PahoClient::onDelivery(DeliveryToken token)
 {
-    PublishRequest* publishRequest = publishQueue.front();
+    PublishRequest *publishRequest = publishQueue.front();
     if (publishRequest->token == token)
     {
+        ClientEventHandler *handler = getHandler();
         publishQueue.pop();
         if (handler != NULL)
         {
@@ -387,7 +384,7 @@ void PahoClient::onDeliveryFailure(DeliveryToken token)
         return;
     }
 
-    PublishRequest* publishRequest = publishQueue.front();
+    PublishRequest *publishRequest = publishQueue.front();
 
     if (publishRequest->token == token)
     {
@@ -395,7 +392,7 @@ void PahoClient::onDeliveryFailure(DeliveryToken token)
         {
             publishQueue.pop();
             {
-                handler->onDelivery(this, publishRequest);
+                getHandler()->onDelivery(this, publishRequest);
             }
             SparkplugClient::destroyRequest(publishRequest);
             publishFromQueue();
@@ -403,7 +400,7 @@ void PahoClient::onDeliveryFailure(DeliveryToken token)
         else
         {
             publishRequest->retryCount++;
-            publish(publishRequest);
+            processRequest(publishRequest);
         }
     }
     else
@@ -428,7 +425,7 @@ void PahoClient::onConnectFailure(int responseCode)
     setState(DISCONNECTED);
 }
 
-int PahoClient::requestPublish(PublishRequest* publishRequest)
+int PahoClient::request(PublishRequest *publishRequest)
 {
     publishQueue.push(publishRequest);
     if (publishQueue.size() == 1 && getState() == CONNECTED)
