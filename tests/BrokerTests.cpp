@@ -100,14 +100,14 @@ std::thread *BrokerTests::brokerThread = nullptr;
  */
 inline bool checkSequence(PayloadMessage message, uint64_t sequence)
 {
-    if (message.payloadlen == 0)
+    if (message.payloadLength == 0)
     {
         return false;
     }
 
     // Decode the payload
     org_eclipse_tahu_protobuf_Payload sparkplugPayload = org_eclipse_tahu_protobuf_Payload_init_zero;
-    if (decode_payload(&sparkplugPayload, (uint8_t *)message.payload, message.payloadlen) < 0)
+    if (decode_payload(&sparkplugPayload, (uint8_t *)message.payload, message.payloadLength) < 0)
     {
         fprintf(stderr, "Failed to decode the payload\n");
         return false;
@@ -192,6 +192,7 @@ TEST_F(BrokerTests, NodeWithDisconnect)
     retries = 0;
     while (!node.isActive() && retries++ < MAX_RETRIES)
     {
+        node.sync();
         sleep_for(milliseconds(RETRY_TIMEOUT));
     }
 
@@ -205,6 +206,7 @@ TEST_F(BrokerTests, NodeWithDisconnect)
     retries = 0;
     while (node.isActive() && retries++ < MAX_RETRIES)
     {
+        node.sync();
         sleep_for(milliseconds(RETRY_TIMEOUT));
     }
 
@@ -217,6 +219,7 @@ TEST_F(BrokerTests, NodeWithDisconnect)
     retries = 0;
     while (!node.isActive() && retries++ < MAX_RETRIES)
     {
+        node.sync();
         sleep_for(milliseconds(RETRY_TIMEOUT));
     }
 
@@ -278,6 +281,7 @@ TEST_F(BrokerTests, NodeWithDeviceSameTime)
     retries = 0;
     while (!node.isActive() && retries++ < MAX_RETRIES)
     {
+        node.sync();
         sleep_for(milliseconds(RETRY_TIMEOUT));
     }
 
@@ -288,6 +292,8 @@ TEST_F(BrokerTests, NodeWithDeviceSameTime)
 
     int32_t executeTime = 5;
     int32_t value = 5;
+
+    node.execute(0);
 
     testNodeMetric.setValue(&value);
     testDeviceMetric.setValue(&value);
@@ -342,6 +348,7 @@ TEST_F(BrokerTests, NodeWithPrimaryHost)
     retries = 0;
     while (!node.isActive() && retries++ < MAX_RETRIES)
     {
+        node.sync();
         sleep_for(milliseconds(RETRY_TIMEOUT));
     }
 
@@ -355,6 +362,7 @@ TEST_F(BrokerTests, NodeWithPrimaryHost)
     retries = 0;
     while (node.isActive() && retries++ < MAX_RETRIES)
     {
+        node.sync();
         sleep_for(milliseconds(RETRY_TIMEOUT));
     }
 
@@ -363,6 +371,7 @@ TEST_F(BrokerTests, NodeWithPrimaryHost)
     retries = 0;
     while (!node.isActive() && retries++ < MAX_RETRIES)
     {
+        node.sync();
         sleep_for(milliseconds(RETRY_TIMEOUT));
     }
 
@@ -422,6 +431,7 @@ TEST_F(BrokerTests, NodeWithRebirthCommand)
     retries = 0;
     while (!node.isActive() && retries++ < MAX_RETRIES)
     {
+        node.sync();
         sleep_for(milliseconds(RETRY_TIMEOUT));
     }
 
@@ -432,6 +442,8 @@ TEST_F(BrokerTests, NodeWithRebirthCommand)
 
     int32_t executeTime = 5;
     int32_t value = 5;
+
+    node.execute(0);
 
     testNodeMetric.setValue(&value);
     testDeviceMetric.setValue(&value);
@@ -456,10 +468,17 @@ TEST_F(BrokerTests, NodeWithRebirthCommand)
     // Memory
     free(binary_buffer);
     free_payload(&payload);
+    
 
     testClient.waitForData(MAX_RETRIES);
-    EXPECT_TRUE(testClient.hasData());
+    ASSERT_TRUE(testClient.hasData());    
     testClient.pop();
+
+    while (!testClient.hasData() && retries++ < MAX_RETRIES)
+    {
+        node.sync();
+        this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
 
     EXPECT_DATA(&testClient, "spBv1.0/GroupId/NBIRTH/NodeId", 0);
     EXPECT_DATA(&testClient, "spBv1.0/GroupId/DBIRTH/NodeId/DeviceName", 1);

@@ -46,7 +46,6 @@ SparkplugClient::SparkplugClient(ClientEventHandler *handler, ClientOptions *opt
 
 SparkplugClient::~SparkplugClient()
 {
-    delete stateMutex;
 }
 
 int SparkplugClient::configure(ClientTopicOptions *topics)
@@ -172,7 +171,6 @@ int SparkplugClient::disconnect()
 
 ClientState SparkplugClient::getState()
 {
-    lock_guard<mutex> lock(*stateMutex);
     return state;
 }
 
@@ -192,26 +190,21 @@ void SparkplugClient::destroyRequest(PublishRequest *publishRequest)
 
 void SparkplugClient::setState(ClientState state)
 {
-    lock_guard<mutex> lock(*stateMutex);
     this->state = state;
 }
 
 void SparkplugClient::setPrimary(bool isPrimary)
 {
-    lock_guard<mutex> lock(*stateMutex);
     this->isPrimary = isPrimary;
 }
 
 bool SparkplugClient::getPrimary()
 {
-    lock_guard<mutex> lock(*stateMutex);
     return isPrimary;
 }
 
 int SparkplugClient::processRequest(PublishRequest *publishRequest)
 {
-    lock_guard<mutex> lock(publishMutex);
-
     if (getState() == DISCONNECTED)
     {
         SPARKPLUGCLIENT_LOGGER "Cannot publish payloads while disconnected\n";
@@ -247,13 +240,13 @@ void SparkplugClient::activated()
     {
         return;
     }
-    handler->onActive(this);
+    handler->onEvent(this, CLIENT_ACTIVE, nullptr);
 }
 
 void SparkplugClient::connected()
 {
     setState(CONNECTED);
-    handler->onConnect(this);
+    handler->onEvent(this, CLIENT_CONNECTED, nullptr);
     if (topics->primaryHostTopic != NULL)
     {
         subscribeToPrimaryHost();
@@ -263,5 +256,27 @@ void SparkplugClient::connected()
 void SparkplugClient::disconnected(char *cause)
 {
     setState(DISCONNECTED);
-    handler->onDisconnect(this, cause);
+    handler->onEvent(this, CLIENT_DISCONNECTED, nullptr);
+}
+
+void SparkplugClient::delivered(PublishRequest *publishRequest)
+{
+    handler->onEvent(this, CLIENT_DELIVERED, publishRequest->publisher);
+    SparkplugClient::destroyRequest(publishRequest);
+}
+
+void SparkplugClient::messageReceived(const char *topicName, int topicLength, void *payload, int payloadLength)
+{
+    MessageEventStruct messageEvent = {
+        topicName, topicLength, payload, payloadLength
+    };
+    handler->onEvent(this, CLIENT_MESSAGE, &messageEvent);
+}
+
+void SparkplugClient::execute()
+{
+    if (connect() == 0)
+    {
+        sync();
+    }
 }

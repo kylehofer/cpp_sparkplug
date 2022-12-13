@@ -35,6 +35,7 @@
 #include "SparkplugClient.h"
 #include "CommonTypes.h"
 #include "MQTTAsync.h"
+#include <mutex>
 #include <queue>
 
 using namespace std;
@@ -49,8 +50,8 @@ private:
     MQTTAsync client;
     MQTTAsync_connectOptions connectionOptions;
     queue<PublishRequest *> publishQueue;
-    std::mutex queueMutex;
     MQTTAsync_willOptions will = MQTTAsync_willOptions_initializer;
+    static mutex callbackLock;
     /**
      * @brief Used to initiate a publish from the PublishRequest queue. If the queue is empty the Client will be set to a Connected State.
      * If there are requests in the queue then the front item of the queue will be published and the Client will be set to a Publishing State.
@@ -169,15 +170,15 @@ public:
      */
     void onDisconnect(char *cause);
     /**
-     * @brief Callback when the Client has received a message from any of the Subscribed topics. Encodes the data into a SparkplugMessage
-     * and informs the event handler of the message.
+     * @brief Callback when the Client has received a message from any of the Subscribed topics.
      *
      * @param topicName The topic name of the message
-     * @param topicLen The length of the topic string
-     * @param message MQTTAsync_message struct containing the payload of the message
+     * @param topicLength The length of the topic string
+     * @param payload The payload buffer containing the raw data
+     * @param payloadLength The length of the payload
      * @return int
      */
-    int onMessage(char *topicName, int topicLen, MQTTAsync_message *message);
+    int onMessage(char *topicName, int topicLength, MQTTAsync_message *message);
     /**
      * @brief Handles a request to publish data to the MQTT Host
      * If requests are being published then the requests is added to the queue
@@ -187,6 +188,16 @@ public:
      */
     int request(PublishRequest *publishRequest);
 
+    /**
+     * @brief Used to synchronise the MQTT client.
+     * As the Paho Client is async this function does nothing.
+     * 
+     */
+    void sync() {};
+
+    /**
+     * @brief Callback for when Node/Device topics have successfully subscribed.
+     */
     void onCommandSubscription();
 };
 

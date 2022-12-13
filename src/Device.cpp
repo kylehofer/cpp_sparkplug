@@ -32,7 +32,7 @@
 #include "Device.h"
 #include "Metrics/CallbackMetric.h"
 
-#define DEVICE_CONTROL_REBIRTH "Device Control/Rebirth"
+#define DEVICE_CONTROL_REBIRTH_NAME "Device Control/Rebirth"
 
 Device::Device() : Publishable()
 {
@@ -45,16 +45,4 @@ Device::~Device() {}
 void Device::setPublisher(Publisher *publisher)
 {
     this->publisher = publisher;
-}
-
-void Device::onMetricCommand(CallbackMetric *caller, SparkplugMessage *message)
-{
-    Metric *metric = (Metric *)caller;
-    if (strcmp(metric->getName(), DEVICE_CONTROL_REBIRTH) == 0)
-    {
-        if (publisher != NULL)
-        {
-            publisher->requestPublish(this, true);
-        }
-    }
 }

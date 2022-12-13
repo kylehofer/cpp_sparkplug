@@ -36,17 +36,25 @@
 #include <stdlib.h>
 #include <functional>
 #include "CommonTypes.h"
-#include "Metrics/CommandMetric.h"
+#include "Metrics/Metric.h"
 
 class CallbackMetric;
 
+/**
+ * @brief Class for handling when a Metric has recieved a command.
+ * 
+ */
 class CommandHandler
 {
 public:
     virtual void onMetricCommand(CallbackMetric *metric, org_eclipse_tahu_protobuf_Payload_Metric *payload) = 0;
 };
 
-class CallbackMetric : CommandMetric
+/**
+ * @brief This class represents a Metric that can fire callbacks when a command is received by a metric.
+ * 
+ */
+class CallbackMetric : Metric
 {
 private:
     CommandHandler *handler = NULL;
@@ -58,27 +66,27 @@ public:
      * @brief Construct a new Sparkplug Metric
      *
      */
-    CallbackMetric() : CommandMetric(){};
+    CallbackMetric() : Metric(){};
     ~CallbackMetric(){};
     /**
-     * @brief Construct a new Sparkplug Metric
+     * @brief Construct a new Callback Metric
      *
-     * @param name The name of the Sparkplug Metric
+     * @param name The name of the Metric
      * @param data A pointer to a piece of data that will be as the first value of the metric
      * @param size The memory size required for the data
      * @param dataType Sparkplug Datatype
      */
-    CallbackMetric(const char *name, void *data, size_t size, uint8_t dataType, CommandHandler *handler) : CommandMetric(name, data, size, dataType), handler(handler){};
+    CallbackMetric(const char *name, void *data, size_t size, uint8_t dataType, CommandHandler *handler) : Metric(name, data, size, dataType), handler(handler){};
     /**
-     * @brief Construct a new Sparkplug Metric
+     * @brief Construct a new Callback Metric
      *
      * @tparam T The data type that will be used to construct the data. Does not work with pointers.
-     * @param name The name of the Sparkplug Metric
+     * @param name The name of the Metric
      * @param data The piece of data that will be as the first value of the metric
      * @param dataType Sparkplug Datatype
      */
     template <typename T>
-    CallbackMetric(const char *name, T data, uint8_t dataType, CommandHandler *handler) : CommandMetric(name, &data, sizeof(T), dataType), handler(handler){};
+    CallbackMetric(const char *name, T data, uint8_t dataType, CommandHandler *handler) : Metric(name, &data, sizeof(T), dataType), handler(handler){};
 
     /**
      * @brief Construct a new Sparkplug Metric
@@ -89,28 +97,45 @@ public:
      * @param dataType Sparkplug Datatype
      */
     template <typename T>
-    CallbackMetric(const char *name, T data, uint8_t dataType, function<void(CallbackMetric *metric, org_eclipse_tahu_protobuf_Payload_Metric *payload)> callback) : CommandMetric(name, &data, sizeof(T), dataType), callback(callback){};
+    CallbackMetric(const char *name, T data, uint8_t dataType, function<void(CallbackMetric *metric, org_eclipse_tahu_protobuf_Payload_Metric *payload)> callback) : Metric(name, &data, sizeof(T), dataType), callback(callback){};
 
+    /**
+     * @brief Sets the command handler for the metric.
+     * This handler have onMetricCommand called when a command is received for this metric.
+     * 
+     * @param handler 
+     */
     void setCommandHandler(CommandHandler *handler)
     {
         this->handler = handler;
     }
 
+    /**
+     * @brief Set the command callback for this metric.
+     * This callback will be executed when a command is received for this metric.
+     * 
+     * @param callback 
+     */
     void setCommandCallback(function<void(CallbackMetric *metric, org_eclipse_tahu_protobuf_Payload_Metric *payload)> callback)
     {
         this->callback = callback;
     }
 
-    void onCommand(org_eclipse_tahu_protobuf_Payload_Metric *payload)
+    /**
+     * @brief Informs the Command metric a Payload Metric has been received for this Metric.
+     * 
+     * @param metric 
+     */
+    void onCommand(org_eclipse_tahu_protobuf_Payload_Metric *metric)
     {
         if (handler != NULL)
         {
-            handler->onMetricCommand(this, payload);
+            handler->onMetricCommand(this, metric);
         }
 
         if (callback != NULL)
         {
-            callback(this, payload);
+            callback(this, metric);
         }
     };
 };

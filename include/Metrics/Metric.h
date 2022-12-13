@@ -113,7 +113,12 @@ public:
      */
     const char *getName();
 
-    virtual void onCommand(org_eclipse_tahu_protobuf_Payload_Metric *payload) = 0;
+    /**
+     * @brief Fired when a command is received for this Metric.
+     * 
+     * @param metric 
+     */
+    virtual void onCommand(org_eclipse_tahu_protobuf_Payload_Metric *metric) = 0;
 };
 
 #endif /* INCLUDE_METRICS_METRIC */

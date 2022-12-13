@@ -40,6 +40,11 @@ public:
     {
         return SparkplugClient::processRequest(publishRequest);
     }
+
+    void sync()
+    {
+        
+    }
 };
 
 #endif /* TESTS_MOCKSPARKPLUGCLIENT */

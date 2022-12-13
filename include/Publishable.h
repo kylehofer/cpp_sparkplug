@@ -36,8 +36,8 @@
 #include "CommonTypes.h"
 #include "Publisher.h"
 #include <tahu.h>
-#include <mutex>
 #include <forward_list>
+
 using namespace std;
 
 class Publisher;
@@ -65,7 +65,6 @@ private:
     int32_t publishPeriod;
     int32_t nextPublish;
     PublishableState state = IDLE;
-    mutex *asyncLock = new mutex();
 
     forward_list<Metric *> metrics;
 
@@ -156,7 +155,7 @@ public:
      * @param publisher The publisher that the command was received from
      * @param message The message received
      */
-    void handleCommand(Publisher *publisher, SparkplugMessage *message);
+    void handleCommand(Publisher *publisher, void *payload, int payloadLength);
 };
 
 #endif /* INCLUDE_PUBLISHABLE */

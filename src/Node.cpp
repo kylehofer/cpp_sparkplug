@@ -67,6 +67,7 @@ using namespace std;
 Node::Node() : Node(NULL)
 {
 }
+
 Node::Node(NodeOptions *options) : Publishable()
 {
     if (options != NULL)
@@ -100,7 +101,6 @@ Node::~Node()
     {
         delete client;
     }
-    delete asyncLock;
     if (topicsConfigured)
     {
         free(nodeBaseTopic);
@@ -125,15 +125,6 @@ Node::~Node()
     if (nodeBirthMetric != NULL)
     {
         delete nodeBirthMetric;
-    }
-}
-
-void Node::connect()
-{
-    lock_guard<mutex> lock(*asyncLock);
-    for (auto client : clients)
-    {
-        client->connect();
     }
 }
 
@@ -290,25 +281,19 @@ int Node::publish(Publishable *publishable, bool isBirth)
 
 void Node::setClientMode(SparkplugClientMode mode)
 {
-    lock_guard<mutex> lock(*asyncLock);
     this->hostMode = mode;
 }
 
 SparkplugClientMode Node::getClientMode()
 {
-    lock_guard<mutex> lock(*asyncLock);
     return hostMode;
 }
 
 void Node::setActiveClient(SparkplugClient *activeClient)
 {
-    asyncLock->lock();
-
     bool isActiveClientNew = activeClient != this->activeClient;
     bool isActiveClientNull = this->activeClient == NULL;
     bool isNextClientNull = activeClient == NULL;
-
-    asyncLock->unlock();
 
     if (!isActiveClientNew)
     {
@@ -319,9 +304,7 @@ void Node::setActiveClient(SparkplugClient *activeClient)
     {
         this->activeClient->deactivate();
     }
-    asyncLock->lock();
     this->activeClient = activeClient;
-    asyncLock->unlock();
 
     if (!isNextClientNull)
     {
@@ -331,8 +314,6 @@ void Node::setActiveClient(SparkplugClient *activeClient)
 
 void Node::activateClient(SparkplugClient *client)
 {
-    lock_guard<mutex> lock(*asyncLock);
-
     if (client == this->activeClient)
     {
         return;
@@ -347,9 +328,7 @@ void Node::activateClient(SparkplugClient *client)
 void Node::deactivateClient(SparkplugClient *client)
 {
     bool isActiveClient;
-    asyncLock->lock();
     isActiveClient = client != this->activeClient;
-    asyncLock->unlock();
 
     if (isActiveClient)
     {
@@ -361,8 +340,17 @@ void Node::deactivateClient(SparkplugClient *client)
 
 SparkplugClient *Node::getActiveClient()
 {
-    lock_guard<mutex> lock(*asyncLock);
     return activeClient;
+}
+
+void Node::sync()
+{
+    for (auto client : clients)
+    {
+        client->execute();
+    }
+
+    processEvents();
 }
 
 int32_t Node::execute(int32_t executeTime)
@@ -372,10 +360,14 @@ int32_t Node::execute(int32_t executeTime)
         cout << "Cannot execute as the node has not been enabled\n";
         return -1;
     }
+
+    sync();
+
     if (!isActive())
     {
         return EXECUTE_IDLE_DELAY;
     }
+
     int32_t nextExecute = 0xFFFF;
     nextExecute = min(update(executeTime), nextExecute);
     if (canPublish())
@@ -383,14 +375,16 @@ int32_t Node::execute(int32_t executeTime)
         publish(this);
     }
 
-    for_each(devices.begin(), devices.end(), [this, executeTime, &nextExecute](Device *device)
+    for_each(devices.begin(), devices.end(),
+             [this, executeTime, &nextExecute](Device *device)
              {
-        nextExecute = min(device->update(executeTime), nextExecute);
+                 nextExecute = min(device->update(executeTime), nextExecute);
 
-        if (device->canPublish())
-        {
-            publish((Publishable*) device);
-        } });
+                 if (device->canPublish())
+                 {
+                     publish((Publishable *)device);
+                 }
+             });
 
     return nextExecute;
 }
@@ -437,13 +431,7 @@ void Node::addDevice(Device *device)
     devices.push_front(device);
 }
 
-void Node::onDelivery(SparkplugClient *client, PublishRequest *request)
-{
-    request->publisher->published();
-    // TODO: Delivery Handler
-}
-
-int Node::onMessage(SparkplugClient *client, const char *topicName, int topicLen, SparkplugMessage *message)
+int Node::onMessage(SparkplugClient *client, const char *topicName, int topicLength, void *payload, int payloadLength)
 {
     if (client == getActiveClient())
     {
@@ -451,7 +439,7 @@ int Node::onMessage(SparkplugClient *client, const char *topicName, int topicLen
         {
             if (strcmp(topicName, clientTopics.nodeCommandTopic) == 0)
             {
-                Publishable::handleCommand(this, message);
+                Publishable::handleCommand(this, payload, payloadLength);
             }
         }
         else if (strstr(topicName, DCMD) != NULL)
@@ -463,7 +451,7 @@ int Node::onMessage(SparkplugClient *client, const char *topicName, int topicLen
 
             // Take off 1 for the "+" wildcard
             size_t deviceCommandPefixLength = strlen(clientTopics.deviceCommandTopic) - 1;
-            size_t deviceNameLength = topicLen - deviceCommandPefixLength;
+            size_t deviceNameLength = topicLength - deviceCommandPefixLength;
             if (deviceNameLength > 0)
             {
                 // Add 1 for null character
@@ -480,18 +468,17 @@ int Node::onMessage(SparkplugClient *client, const char *topicName, int topicLen
                     Publishable *publishable;
                     publishable = (Publishable *)*result;
                     // Handle Device Command
-                    publishable->handleCommand(this, message);
+                    publishable->handleCommand(this, payload, payloadLength);
                 }
 
                 free(deviceName);
             }
-            cout << "Device Command\n";
         }
     }
 
     if (clientTopics.primaryHostTopic != NULL && strcmp(topicName, clientTopics.primaryHostTopic) == 0)
     {
-        if (strncmp((char *)message->payload, "ONLINE", message->payloadlen) == 0)
+        if (strncmp((char *)payload, "ONLINE", payloadLength) == 0)
         {
             // Primary Host Online
             if (getActiveClient() != client)
@@ -499,7 +486,7 @@ int Node::onMessage(SparkplugClient *client, const char *topicName, int topicLen
                 activateClient(client);
             }
         }
-        else if (strncmp((char *)message->payload, "OFFLINE", message->payloadlen) == 0)
+        else if (strncmp((char *)payload, "OFFLINE", payloadLength) == 0)
         {
             if (getActiveClient() == client)
             {
@@ -508,15 +495,6 @@ int Node::onMessage(SparkplugClient *client, const char *topicName, int topicLen
         }
     }
     return 0;
-}
-
-void Node::onActive(SparkplugClient *client)
-{
-    setActiveClient(client);
-}
-
-void Node::onDeactive(SparkplugClient *client)
-{
 }
 
 void Node::stop()
@@ -528,35 +506,13 @@ void Node::stop()
     }
 }
 
-void Node::onConnect(SparkplugClient *client)
-{
-    if (getClientMode() == SINGLE)
-    {
-        activateClient(client);
-    }
-}
-
-void Node::onDisconnect(SparkplugClient *client, char *cause)
-{
-    switch (getClientMode())
-    {
-    case SINGLE:
-    case PRIMARY_HOST:
-        break;
-    default:
-        break;
-    }
-
-    // TODO: Disconnect Handler
-}
-
 bool Node::isActive()
 {
     if (!enabled)
     {
         return false;
     }
-    connect();
+
     SparkplugClient *activeClient = getActiveClient();
     if (activeClient == NULL)
     {
@@ -569,11 +525,103 @@ bool Node::isActive()
     return true;
 }
 
-void Node::onMetricCommand(CallbackMetric *caller, SparkplugMessage *message)
+void *copyBuffer(void *source, size_t length)
 {
-    // Metric* metric = (Metric*) caller;
-    // if (strcmp(metric->getName(), NODE_CONTROL_REBIRTH) == 0)
-    // {
-    //     this->publishBirth();
-    // }
+    void *buffer;
+    buffer = malloc(length);
+    memcpy(buffer, source, length);
+    return buffer;
+}
+
+void Node::onEvent(SparkplugClient *client, EventType event, void *data)
+{
+    void *eventData = nullptr;
+
+    switch (event)
+    {
+    case CLIENT_MESSAGE:
+    {
+        // Copy the incoming data into the queue
+        MessageEventStruct *incomingData, *queueData;
+
+        incomingData = (MessageEventStruct *)data;
+        queueData = (MessageEventStruct *)malloc(sizeof(MessageEventStruct));
+
+        queueData->topicName = (char *)copyBuffer((void *)incomingData->topicName, incomingData->topicLength + 1);
+        queueData->topicLength = incomingData->topicLength;
+
+        queueData->payload = copyBuffer(incomingData->payload, incomingData->payloadLength);
+        queueData->payloadLength = incomingData->payloadLength;
+
+        eventData = queueData;
+    }
+    break;
+    case CLIENT_CONNECTED:
+        break;
+    case CLIENT_DISCONNECTED:
+        break;
+    case CLIENT_ACTIVE:
+        break;
+    case CLIENT_DEACTIVE:
+        break;
+    case CLIENT_DELIVERED:
+        eventData = data;
+        break;
+    default:
+        break;
+    }
+
+    eventQueue.push_back({client, event, eventData});
+}
+
+void Node::processEvents()
+{
+    while (!eventQueue.empty())
+    {
+        ClientEventData eventData = eventQueue.front();
+        eventQueue.pop_front();
+
+        switch (eventData.eventType)
+        {
+        case CLIENT_DELIVERED:
+            {
+                Publishable* publishable;
+                publishable = (Publishable*) eventData.data;
+                publishable->published();
+            }
+            break;
+        case CLIENT_MESSAGE:
+        {
+            MessageEventStruct *messageData;
+            messageData = (MessageEventStruct *)eventData.data;
+
+            onMessage(
+                eventData.client,
+                messageData->topicName, messageData->topicLength,
+                messageData->payload, messageData->payloadLength);
+
+            // We copy data to our queue, so we must free it
+            free(messageData->payload);
+            free((void *)messageData->topicName);
+            free(messageData);
+        }
+        break;
+        case CLIENT_CONNECTED:
+            if (getClientMode() == SINGLE)
+            {
+                activateClient(eventData.client);
+            }
+            break;
+        case CLIENT_DISCONNECTED:
+            break;
+        case CLIENT_ACTIVE:
+            setActiveClient(eventData.client);
+            break;
+        case CLIENT_DEACTIVE:
+            break;
+        default:
+            break;
+        }
+    }
+
 }
