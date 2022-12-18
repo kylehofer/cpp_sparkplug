@@ -1,6 +1,6 @@
 /*
  * File: BrokerTests.cpp
- * Project: sparkplug_c
+ * Project: cpp_sparkplug
  * Created Date: Sunday November 27th 2022
  * Author: Kyle Hofer
  *
@@ -68,9 +68,9 @@ static std::thread *brokerThread = nullptr;
  */
 template <typename T>
 class BrokerTests : public testing::Test
-{clients/
-protected:
-    static void SetUpTestSuite()
+{
+    clients /
+        protected : static void SetUpTestSuite()
     {
 
         if (brokerThread == nullptr)
@@ -163,8 +163,8 @@ inline void expectData(TestClientUtility *testClient, Node *node, const char *to
 
 // Wraps the expectData method with a SCOPED_TRACE
 #define EXPECT_DATA(testClient, node, topic, sequence) \
-    {                                            \
-        SCOPED_TRACE("DATA_CHECK");              \
+    {                                                  \
+        SCOPED_TRACE("DATA_CHECK");                    \
         expectData(testClient, node, topic, sequence); \
     }
 
@@ -354,7 +354,6 @@ TYPED_TEST_P(BrokerTests, NodeDisconnectWhilePublishing)
     node.stop();
     sparkplugForwarder.stop();
 }
-
 
 // Tests Nodes with devices on the same publish time
 TYPED_TEST_P(BrokerTests, NodeWithDeviceSameTime)

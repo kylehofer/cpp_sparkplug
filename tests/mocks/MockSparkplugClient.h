@@ -8,6 +8,7 @@ class MockSparkplugClient : public SparkplugClient
 {
 private:
     bool connected = false;
+
 protected:
 public:
     MockSparkplugClient() : MockSparkplugClient(NULL, NULL){};
@@ -45,7 +46,6 @@ public:
 
     void sync()
     {
-        
     }
 
     bool isConnected()

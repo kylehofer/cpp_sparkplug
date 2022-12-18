@@ -143,18 +143,18 @@ public:
     /**
      * @brief Used to synchronise the MQTT client.
      * As the Paho Client is async this function does nothing.
-     * 
+     *
      */
-    void sync() {};
+    void sync(){};
     /**
      * @brief Callback for when Node/Device topics have successfully subscribed.
      */
     void onCommandSubscription();
     /**
      * @brief Returns whether the client is connected
-     * 
-     * @return true 
-     * @return false 
+     *
+     * @return true
+     * @return false
      */
     bool isConnected();
 };

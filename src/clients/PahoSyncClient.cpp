@@ -1,6 +1,6 @@
 /*
  * File: PahoSyncClient.cpp
- * Project: sparkplug_c
+ * Project: cpp_sparkplug
  * Created Date: Tuesday December 13th 2022
  * Author: Kyle Hofer
  *
@@ -139,7 +139,6 @@ int PahoSyncClient::publishMessage(const char *topic, uint8_t *buffer, size_t le
 
     if (returnCode == MQTTCLIENT_SUCCESS)
     {
-        
     }
     else
     {
@@ -222,7 +221,6 @@ void PahoSyncClient::sync()
             }
 
             free(tokens);
-
         }
         else if (result == MQTTCLIENT_DISCONNECTED)
         {
@@ -260,7 +258,6 @@ void PahoSyncClient::sync()
         }
     }
 }
-
 
 bool PahoSyncClient::isConnected()
 {

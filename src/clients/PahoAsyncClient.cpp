@@ -30,6 +30,7 @@
  */
 
 #include "clients/PahoAsyncClient.h"
+#include "CommonTypes.h"
 #include <iostream>
 
 #define QOS 1
@@ -295,7 +296,6 @@ int PahoAsyncClient::configureClient(ClientOptions *options)
     return 0;
 }
 
-
 PahoAsyncClient::~PahoAsyncClient()
 {
     MQTTAsync_destroy(&client);
@@ -324,12 +324,10 @@ void PahoAsyncClient::onDelivery(DeliveryToken token)
     }
 }
 
-
 void PahoAsyncClient::onConnect()
 {
     connected();
 }
-
 
 void PahoAsyncClient::onConnectFailure(int responseCode)
 {

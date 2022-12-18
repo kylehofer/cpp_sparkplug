@@ -277,8 +277,7 @@ void SparkplugClient::undelivered(PublishRequest *publishRequest)
 void SparkplugClient::messageReceived(const char *topicName, int topicLength, void *payload, int payloadLength)
 {
     MessageEventStruct messageEvent = {
-        topicName, topicLength, payload, payloadLength
-    };
+        topicName, topicLength, payload, payloadLength};
     handler->onEvent(this, CLIENT_MESSAGE, &messageEvent);
 }
 

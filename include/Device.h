@@ -70,8 +70,8 @@ public:
     /**
      * @brief Set the publisher responsible for this Device.
      * Allows to device to request publishes for rebirths or COV metrics
-     * 
-     * @param publisher 
+     *
+     * @param publisher
      */
     void setPublisher(Publisher *publisher);
 

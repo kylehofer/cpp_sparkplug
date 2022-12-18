@@ -380,13 +380,13 @@ int32_t Node::execute(int32_t executeTime)
     }
 
     for_each(devices.begin(), devices.end(),
-            [this, executeTime, &nextExecute](Device *device)
+             [this, executeTime, &nextExecute](Device *device)
              {
                  nextExecute = min(device->update(executeTime), nextExecute);
 
                  if (device->canPublish())
                  {
-                    publish((Publishable *)device);
+                     publish((Publishable *)device);
                  }
              });
 

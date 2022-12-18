@@ -56,17 +56,17 @@ private:
 
     /**
      * @brief Sets up a listener that will forward all traffic from the source to the destination
-     * 
-     * @param source 
-     * @param destination 
+     *
+     * @param source
+     * @param destination
      */
     void listener(int source, int destination);
 
     /**
      * @brief Whether the port is blocking.
      * Thread safe.
-     * 
-     * @return true 
+     *
+     * @return true
      * @return false output
      */
     bool isBlocked();
@@ -74,9 +74,9 @@ private:
     /**
      * @brief Whether the port forwarding has stopped.
      * Thread safe.
-     * 
-     * @return true 
-     * @return false 
+     *
+     * @return true
+     * @return false
      */
     bool isStopped();
 
@@ -101,14 +101,14 @@ public:
     /**
      * @brief Causes the port forwarder to start blocking traffic.
      * Thread safe.
-     * 
+     *
      */
     void block();
 
     /**
      * @brief Causes the port forwarder to stop blocking traffic.
      * Thread safe.
-     * 
+     *
      */
     void unblock();
 

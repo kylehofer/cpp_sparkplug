@@ -6,7 +6,7 @@
 /**
  * @brief Simple Metric implementation.
  * Does not react to commands.
- * 
+ *
  */
 class SimpleMetric : public Metric
 {
@@ -38,8 +38,8 @@ public:
 
     /**
      * @brief Does nothing when a command is received.
-     * 
-     * @param payload 
+     *
+     * @param payload
      */
     void onCommand(org_eclipse_tahu_protobuf_Payload_Metric *payload){};
 };
