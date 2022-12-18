@@ -36,7 +36,7 @@
 #include <stdlib.h>
 #include <functional>
 #include "CommonTypes.h"
-#include "Metrics/Metric.h"
+#include "metrics/Metric.h"
 
 class CallbackMetric;
 

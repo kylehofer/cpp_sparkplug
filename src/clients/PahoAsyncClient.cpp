@@ -1,5 +1,5 @@
 /*
- * File: PahoClient.cpp
+ * File: PahoAsyncClient.cpp
  * Project: cpp_sparkplug
  * Created Date: Friday November 18th 2022
  * Author: Kyle Hofer
@@ -29,14 +29,14 @@
  * HISTORY:
  */
 
-#include "PahoClient.h"
+#include "clients/PahoAsyncClient.h"
 #include <iostream>
 
 #define QOS 1
 
 using namespace std;
 
-#define PAHOCLIENT_LOGGER cout << "Paho Client: "
+#define PAHOASYNCCLIENT_LOGGER cout << "Paho Async Client: "
 
 /**
  * @brief
@@ -46,13 +46,13 @@ using namespace std;
  */
 static void deliveryComplete(void *context, MQTTAsync_token token)
 {
-    PahoClient *client = (PahoClient *)context;
+    PahoAsyncClient *client = (PahoAsyncClient *)context;
     client->onDelivery(token);
 }
 
 static void deliveryFailure(void *context, MQTTAsync_failureData *response)
 {
-    PahoClient *client = (PahoClient *)context;
+    PahoAsyncClient *client = (PahoAsyncClient *)context;
 
     client->onDeliveryFailure(response->token);
 }
@@ -68,7 +68,7 @@ static void deliveryFailure(void *context, MQTTAsync_failureData *response)
  */
 static int messageArrived(void *context, char *topicName, int topicLength, MQTTAsync_message *message)
 {
-    PahoClient *client = (PahoClient *)context;
+    PahoAsyncClient *client = (PahoAsyncClient *)context;
     return client->onMessage(topicName, topicLength, message);
 }
 
@@ -80,45 +80,45 @@ static int messageArrived(void *context, char *topicName, int topicLength, MQTTA
  */
 static void connectionLost(void *context, char *cause)
 {
-    PahoClient *client = (PahoClient *)context;
+    PahoAsyncClient *client = (PahoAsyncClient *)context;
     client->onDisconnect(cause);
 }
 
 void connectionFailure(void *context, MQTTAsync_failureData *response)
 {
-    PahoClient *client = (PahoClient *)context;
+    PahoAsyncClient *client = (PahoAsyncClient *)context;
     client->onConnectFailure(response->code);
 }
 
 static void connectionSuccess(void *context, MQTTAsync_successData *response)
 {
-    PahoClient *client = (PahoClient *)context;
+    PahoAsyncClient *client = (PahoAsyncClient *)context;
     client->onConnect();
 }
 
 static void onSubscribeSuccess(void *context, MQTTAsync_successData *response)
 {
-    // PahoClient *client = (PahoClient *)context;
+    // PahoAsyncClient *client = (PahoAsyncClient *)context;
 }
 
 static void onSubscribeFailure(void *context, MQTTAsync_failureData *response)
 {
-    // PahoClient *client = (PahoClient *)context;
+    // PahoAsyncClient *client = (PahoAsyncClient *)context;
 }
 
 static void onCommandSubscribeSuccess(void *context, MQTTAsync_successData *response)
 {
-    PahoClient *client = (PahoClient *)context;
+    PahoAsyncClient *client = (PahoAsyncClient *)context;
 
     client->onCommandSubscription();
 }
 
 static void onCommandSubscribeFailure(void *context, MQTTAsync_failureData *response)
 {
-    // PahoClient *client = (PahoClient *)context;
+    // PahoAsyncClient *client = (PahoAsyncClient *)context;
 }
 
-int PahoClient::clientConnect()
+int PahoAsyncClient::clientConnect()
 {
     if (getState() != DISCONNECTED)
     {
@@ -131,14 +131,14 @@ int PahoClient::clientConnect()
 
     if (returnCode != MQTTASYNC_SUCCESS)
     {
-        PAHOCLIENT_LOGGER "Failed to connect, return code " << returnCode << "\n";
+        PAHOASYNCCLIENT_LOGGER "Failed to connect, return code " << returnCode << "\n";
         returnCode = EXIT_FAILURE;
         return returnCode;
     }
     return 0;
 }
 
-int PahoClient::clientDisconnect()
+int PahoAsyncClient::clientDisconnect()
 {
     MQTTAsync_disconnectOptions disconnectOptions = MQTTAsync_disconnectOptions_initializer;
 
@@ -149,14 +149,14 @@ int PahoClient::clientDisconnect()
     int returnCode;
     if ((returnCode = MQTTAsync_disconnect(client, &disconnectOptions)) != MQTTASYNC_SUCCESS)
     {
-        PAHOCLIENT_LOGGER "Failed to disconnect, return code " << returnCode << "\n";
+        PAHOASYNCCLIENT_LOGGER "Failed to disconnect, return code " << returnCode << "\n";
         returnCode = EXIT_FAILURE;
         return returnCode;
     }
     return 0;
 }
 
-int PahoClient::subscribeToPrimaryHost()
+int PahoAsyncClient::subscribeToPrimaryHost()
 {
     int returnCode;
 
@@ -169,7 +169,7 @@ int PahoClient::subscribeToPrimaryHost()
 
     if (returnCode != MQTTASYNC_SUCCESS)
     {
-        PAHOCLIENT_LOGGER "Failed to subscribe, return code " << returnCode << "\n";
+        PAHOASYNCCLIENT_LOGGER "Failed to subscribe, return code " << returnCode << "\n";
         returnCode = EXIT_FAILURE;
         // TODO: Subscribe Failure
         return returnCode;
@@ -178,7 +178,7 @@ int PahoClient::subscribeToPrimaryHost()
     return 0;
 }
 
-int PahoClient::subscribeToCommands()
+int PahoAsyncClient::subscribeToCommands()
 {
     int returnCode;
 
@@ -194,7 +194,7 @@ int PahoClient::subscribeToCommands()
 
     if (returnCode != MQTTASYNC_SUCCESS)
     {
-        PAHOCLIENT_LOGGER "Failed to subscribe, return code " << returnCode << "\n";
+        PAHOASYNCCLIENT_LOGGER "Failed to subscribe, return code " << returnCode << "\n";
         returnCode = EXIT_FAILURE;
         // TODO: Subscribe Failure
         return returnCode;
@@ -203,7 +203,7 @@ int PahoClient::subscribeToCommands()
     return 0;
 }
 
-int PahoClient::unsubscribeToCommands()
+int PahoAsyncClient::unsubscribeToCommands()
 {
     int returnCode;
 
@@ -213,7 +213,7 @@ int PahoClient::unsubscribeToCommands()
 
     if (returnCode != MQTTASYNC_SUCCESS)
     {
-        PAHOCLIENT_LOGGER "Failed to unsubscribe, return code " << returnCode << "\n";
+        PAHOASYNCCLIENT_LOGGER "Failed to unsubscribe, return code " << returnCode << "\n";
         returnCode = EXIT_FAILURE;
         // TODO: Unsubscribe Failure
         return returnCode;
@@ -222,7 +222,7 @@ int PahoClient::unsubscribeToCommands()
     return 0;
 }
 
-int PahoClient::publishMessage(const char *topic, uint8_t *buffer, size_t length, DeliveryToken *token)
+int PahoAsyncClient::publishMessage(const char *topic, uint8_t *buffer, size_t length, DeliveryToken *token)
 {
     MQTTAsync_responseOptions responseOptions = MQTTAsync_responseOptions_initializer;
 
@@ -241,7 +241,7 @@ int PahoClient::publishMessage(const char *topic, uint8_t *buffer, size_t length
     }
     return returnCode;
 }
-int PahoClient::configureClient(ClientOptions *options)
+int PahoAsyncClient::configureClient(ClientOptions *options)
 {
     int returnCode;
 
@@ -251,7 +251,7 @@ int PahoClient::configureClient(ClientOptions *options)
 
     if (returnCode != MQTTASYNC_SUCCESS)
     {
-        PAHOCLIENT_LOGGER "Failed to create client";
+        PAHOASYNCCLIENT_LOGGER "Failed to create client";
         // TODO: Client Failure
         return EXIT_FAILURE;
     }
@@ -295,62 +295,21 @@ int PahoClient::configureClient(ClientOptions *options)
     return 0;
 }
 
-PahoClient::PahoClient() : SparkplugClient() {}
 
-PahoClient::PahoClient(ClientEventHandler *handler, ClientOptions *options) : SparkplugClient(handler, options) {}
-
-PahoClient::~PahoClient()
+PahoAsyncClient::~PahoAsyncClient()
 {
     MQTTAsync_destroy(&client);
     dumpQueue();
 }
 
-void PahoClient::setPrimary(bool isPrimary)
+int PahoAsyncClient::onMessage(char *topicName, int topicLength, MQTTAsync_message *message)
 {
-    SparkplugClient::setPrimary(isPrimary);
-
-    if (!isPrimary)
-    {
-        dumpQueue();
-    }
-}
-
-void PahoClient::publishFromQueue()
-{
-    if (getPrimary() && publishQueue.size() > 0)
-    {
-        processRequest(publishQueue.front());
-    }
-    else
-    {
-        if (getState() == PUBLISHING_PAYLOAD)
-        {
-            setState(CONNECTED);
-        }
-    }
-}
-
-void PahoClient::dumpQueue()
-{
-    while (!publishQueue.empty())
-    {
-        SparkplugClient::destroyRequest(publishQueue.front());
-        publishQueue.pop();
-    }
-}
-
-int PahoClient::onMessage(char *topicName, int topicLength, MQTTAsync_message *message)
-{
-    ClientEventHandler *handler = getHandler();
-    if (handler != NULL)
-    {
-        messageReceived(topicName, topicLength, message->payload, message->payloadlen);
-        MQTTAsync_freeMessage(&message);
-    }
+    messageReceived(topicName, topicLength, message->payload, message->payloadlen);
+    MQTTAsync_freeMessage(&message);
     return 1;
 }
 
-void PahoClient::onDelivery(DeliveryToken token)
+void PahoAsyncClient::onDelivery(DeliveryToken token)
 {
     PublishRequest *publishRequest = publishQueue.front();
     if (publishRequest->token == token)
@@ -361,68 +320,29 @@ void PahoClient::onDelivery(DeliveryToken token)
     }
     else
     {
-        PAHOCLIENT_LOGGER "Oh no, we have a publish without a correct token\n";
+        PAHOASYNCCLIENT_LOGGER "Oh no, we have a publish without a correct token\n";
     }
 }
 
-void PahoClient::onDeliveryFailure(DeliveryToken token)
-{
-    if (getState() != CONNECTED)
-    {
-        return;
-    }
 
-    PublishRequest *publishRequest = publishQueue.front();
-
-    if (publishRequest->token == token)
-    {
-        if (publishRequest->retryCount >= PUBLISH_RETRIES)
-        {
-            publishQueue.pop();
-            // TODO: Failed to deliver
-            // delivered(publishRequest);
-            SparkplugClient::destroyRequest(publishRequest);
-            publishFromQueue();
-        }
-        else
-        {
-            publishRequest->retryCount++;
-            processRequest(publishRequest);
-        }
-    }
-    else
-    {
-        PAHOCLIENT_LOGGER "Oh no, we have a publish without a correct token\n";
-    }
-}
-
-void PahoClient::onConnect()
+void PahoAsyncClient::onConnect()
 {
     connected();
 }
 
-void PahoClient::onDisconnect(char *cause)
-{
-    disconnected(cause);
-}
 
-void PahoClient::onConnectFailure(int responseCode)
+void PahoAsyncClient::onConnectFailure(int responseCode)
 {
-    PAHOCLIENT_LOGGER "Failed to connected. Response Code: " << responseCode << "\n";
+    PAHOASYNCCLIENT_LOGGER "Failed to connected. Response Code: " << responseCode << "\n";
     setState(DISCONNECTED);
 }
 
-int PahoClient::request(PublishRequest *publishRequest)
-{
-    publishQueue.push(publishRequest);
-    if (publishQueue.size() == 1 && getState() == CONNECTED)
-    {
-        publishFromQueue();
-    }
-    return 0;
-}
-
-void PahoClient::onCommandSubscription()
+void PahoAsyncClient::onCommandSubscription()
 {
     activated();
+}
+
+bool PahoAsyncClient::isConnected()
+{
+    return MQTTAsync_isConnected(client);
 }

@@ -30,7 +30,7 @@
  */
 
 #include "Device.h"
-#include "Metrics/CallbackMetric.h"
+#include "metrics/CallbackMetric.h"
 
 #define DEVICE_CONTROL_REBIRTH_NAME "Device Control/Rebirth"
 

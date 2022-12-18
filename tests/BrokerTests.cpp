@@ -31,11 +31,12 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "PahoClient.h"
+#include "clients/PahoSyncClient.h"
+#include "clients/PahoAsyncClient.h"
 #include "Node.h"
 #include "Device.h"
-#include "Metrics/SimpleMetric.h"
-#include "Metrics/CallbackMetric.h"
+#include "metrics/SimpleMetric.h"
+#include "metrics/CallbackMetric.h"
 #include "utils/TestClientUtility.h"
 #include "utils/PortForwarder.h"
 
@@ -46,7 +47,6 @@
 #define RETRY_TIMEOUT 5
 
 const char CLIENT_ADDRESS[] = "tcp://localhost:1883";
-const char DISCONNECT_ADDRESS[] = "tcp://localhost:1884";
 const char CLIENT_CLIENT_ID[] = "unique_id";
 const int BROKER_PORT = 1883;
 const char BROKER_HOSTNAME[] = "localhost";
@@ -60,15 +60,19 @@ using namespace std;
 using ::chrono::milliseconds;
 using ::this_thread::sleep_for;
 
+static std::thread *brokerThread = nullptr;
+
 /**
  * @brief Test Suite for Broker tests.
  * Setup up a mosquitto broker for running tests
  */
+template <typename T>
 class BrokerTests : public testing::Test
-{
+{clients/
 protected:
     static void SetUpTestSuite()
     {
+
         if (brokerThread == nullptr)
         {
             brokerThread = new thread(&system, "mosquitto >/dev/null 2>&1");
@@ -84,10 +88,19 @@ protected:
         brokerThread = nullptr;
     }
 
-    static std::thread *brokerThread;
+    void SetUp() override
+    {
+    }
+
+    // You can define per-test tear-down logic as usual.
+    void TearDown() override
+    {
+    }
 };
 
-std::thread *BrokerTests::brokerThread = nullptr;
+TYPED_TEST_SUITE_P(BrokerTests);
+
+// std::thread *BrokerTests::brokerThread = nullptr;
 
 /**
  * @brief Utility method for checking messages sequences
@@ -125,13 +138,17 @@ inline bool checkSequence(PayloadMessage message, uint64_t sequence)
  * @param topic
  * @param sequence -1 if no sequence needs to be checked
  */
-inline void expectData(TestClientUtility *testClient, const char *topic, int sequence)
+inline void expectData(TestClientUtility *testClient, Node *node, const char *topic, int sequence)
 {
-    testClient->waitForData(MAX_RETRIES);
+    int retries = 0;
 
-    bool hasData = testClient->hasData();
+    while (!testClient->hasData() && retries++ < MAX_RETRIES)
+    {
+        node->sync();
+        this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
 
-    ASSERT_TRUE(hasData);
+    ASSERT_TRUE(testClient->hasData());
     PayloadMessage receivedMessage;
     receivedMessage = testClient->pop();
     EXPECT_STREQ(receivedMessage.topic, topic);
@@ -140,27 +157,25 @@ inline void expectData(TestClientUtility *testClient, const char *topic, int seq
         EXPECT_TRUE(checkSequence(receivedMessage, sequence));
     }
     TestClientUtility::freePayload(receivedMessage);
+
+    node->sync();
 }
 
 // Wraps the expectData method with a SCOPED_TRACE
-#define EXPECT_DATA(testClient, topic, sequence) \
+#define EXPECT_DATA(testClient, node, topic, sequence) \
     {                                            \
         SCOPED_TRACE("DATA_CHECK");              \
-        expectData(testClient, topic, sequence); \
+        expectData(testClient, node, topic, sequence); \
     }
 
 // Tests a broker disconnection
-TEST_F(BrokerTests, NodeWithDisconnect)
+TYPED_TEST_P(BrokerTests, NodeWithDisconnect)
 {
     PortForwarder sparkplugForwarder = PortForwarder(1884, BROKER_PORT);
 
     sparkplugForwarder.start();
 
     int retries = 0;
-
-    TestClientUtility testClient;
-
-    testClient.connect("localhost", BROKER_PORT);
 
     NodeOptions nodeOptions = {
         "GroupId", "NodeId", NULL, 5, NODE_CONTROL_NONE};
@@ -174,6 +189,9 @@ TEST_F(BrokerTests, NodeWithDisconnect)
         .keepAliveInterval = 1};
 
     Node node = Node(&nodeOptions);
+    TestClientUtility testClient;
+
+    testClient.connect("localhost", BROKER_PORT);
 
     Device testDevice = Device("DeviceName", 5);
 
@@ -182,7 +200,7 @@ TEST_F(BrokerTests, NodeWithDisconnect)
 
     SimpleMetric testNodeMetric = SimpleMetric("MetricName", 20, METRIC_DATA_TYPE_INT32);
 
-    node.addClient<PahoClient>(&clientOptions);
+    node.addClient<TypeParam>(&clientOptions);
     node.addDevice(&testDevice);
     node.addMetric(&testNodeMetric);
     node.enable();
@@ -198,8 +216,8 @@ TEST_F(BrokerTests, NodeWithDisconnect)
 
     ASSERT_TRUE(node.isActive());
 
-    EXPECT_DATA(&testClient, "spBv1.0/GroupId/NBIRTH/NodeId", 0);
-    EXPECT_DATA(&testClient, "spBv1.0/GroupId/DBIRTH/NodeId/DeviceName", 1);
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/NBIRTH/NodeId", 0);
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/DBIRTH/NodeId/DeviceName", 1);
 
     sparkplugForwarder.stop();
 
@@ -212,7 +230,7 @@ TEST_F(BrokerTests, NodeWithDisconnect)
 
     EXPECT_FALSE(node.isActive());
 
-    EXPECT_DATA(&testClient, "spBv1.0/GroupId/NDEATH/NodeId", -1);
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/NDEATH/NodeId", -1);
 
     sparkplugForwarder.start();
 
@@ -230,25 +248,118 @@ TEST_F(BrokerTests, NodeWithDisconnect)
 
     testNodeMetric.setValue(&value);
     testDeviceMetric.setValue(&value);
-
     executeTime = node.execute(executeTime);
-    testClient.waitForData(MAX_RETRIES);
 
-    EXPECT_DATA(&testClient, "spBv1.0/GroupId/NDATA/NodeId", 2);
-    EXPECT_DATA(&testClient, "spBv1.0/GroupId/DDATA/NodeId/DeviceName", 3);
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/NDATA/NodeId", 2);
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/DDATA/NodeId/DeviceName", 3);
 
     node.stop();
     sparkplugForwarder.stop();
 }
 
-// Tests Nodes with devices on the same publish time
-TEST_F(BrokerTests, NodeWithDeviceSameTime)
+// Tests a broker disconnection
+TYPED_TEST_P(BrokerTests, NodeDisconnectWhilePublishing)
 {
+    PortForwarder sparkplugForwarder = PortForwarder(1884, BROKER_PORT);
+
+    sparkplugForwarder.start();
+
     int retries = 0;
 
+    NodeOptions nodeOptions = {
+        "GroupId", "NodeId", NULL, 5, NODE_CONTROL_NONE};
+
+    ClientOptions clientOptions = {
+        .address = "tcp://localhost:1884",
+        .clientId = CLIENT_CLIENT_ID,
+        .username = NULL,
+        .password = NULL,
+        .connectTimeout = 1,
+        .keepAliveInterval = 1};
+
+    Node node = Node(&nodeOptions);
     TestClientUtility testClient;
 
-    testClient.connect("localhost", 1883);
+    testClient.connect("localhost", BROKER_PORT);
+
+    Device testDevice = Device("DeviceName", 5);
+
+    SimpleMetric testDeviceMetric = SimpleMetric("MetricName", 20, METRIC_DATA_TYPE_INT32);
+    testDevice.addMetric(&testDeviceMetric);
+
+    SimpleMetric testNodeMetric = SimpleMetric("MetricName", 20, METRIC_DATA_TYPE_INT32);
+
+    node.addClient<TypeParam>(&clientOptions);
+    node.addDevice(&testDevice);
+    node.addMetric(&testNodeMetric);
+    node.enable();
+
+    testClient.waitForReady(MAX_RETRIES);
+
+    retries = 0;
+    while (!node.isActive() && retries++ < MAX_RETRIES)
+    {
+        node.sync();
+        sleep_for(milliseconds(RETRY_TIMEOUT));
+    }
+
+    ASSERT_TRUE(node.isActive());
+
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/NBIRTH/NodeId", 0);
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/DBIRTH/NodeId/DeviceName", 1);
+
+    sparkplugForwarder.block();
+
+    int32_t executeTime = 5;
+    int32_t value = 5;
+
+    testNodeMetric.setValue(&value);
+    testDeviceMetric.setValue(&value);
+    executeTime = node.execute(executeTime);
+
+    sparkplugForwarder.stop();
+
+    retries = 0;
+    while (node.isActive() && retries++ < MAX_RETRIES)
+    {
+        node.sync();
+        sleep_for(milliseconds(RETRY_TIMEOUT));
+    }
+
+    EXPECT_FALSE(node.isActive());
+
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/NDEATH/NodeId", -1);
+
+    sparkplugForwarder.unblock();
+    sparkplugForwarder.start();
+
+    retries = 0;
+    while (!node.isActive() && retries++ < MAX_RETRIES)
+    {
+        node.sync();
+        sleep_for(milliseconds(RETRY_TIMEOUT));
+    }
+
+    ASSERT_TRUE(node.isActive());
+
+    value = 15;
+
+    testNodeMetric.setValue(&value);
+    testDeviceMetric.setValue(&value);
+    executeTime = node.execute(executeTime);
+
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/NDATA/NodeId", 3);
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/DDATA/NodeId/DeviceName", 4);
+
+    node.stop();
+    sparkplugForwarder.stop();
+}
+
+
+// Tests Nodes with devices on the same publish time
+TYPED_TEST_P(BrokerTests, NodeWithDeviceSameTime)
+{
+    int retries = 0;
 
     NodeOptions nodeOptions = {
         "GroupId", "NodeId", NULL, 5, NODE_CONTROL_NONE};
@@ -263,6 +374,9 @@ TEST_F(BrokerTests, NodeWithDeviceSameTime)
 
     Node node = Node(&nodeOptions);
 
+    TestClientUtility testClient;
+    testClient.connect("localhost", 1883);
+
     Device testDevice = Device("DeviceName", 5);
 
     SimpleMetric testDeviceMetric = SimpleMetric("MetricName", 20, METRIC_DATA_TYPE_INT32);
@@ -271,7 +385,7 @@ TEST_F(BrokerTests, NodeWithDeviceSameTime)
 
     SimpleMetric testNodeMetric = SimpleMetric("MetricName", 20, METRIC_DATA_TYPE_INT32);
 
-    node.addClient<PahoClient>(&clientOptions);
+    node.addClient<TypeParam>(&clientOptions);
     node.addDevice(&testDevice);
     node.addMetric(&testNodeMetric);
     node.enable();
@@ -287,8 +401,8 @@ TEST_F(BrokerTests, NodeWithDeviceSameTime)
 
     ASSERT_TRUE(node.isActive());
 
-    EXPECT_DATA(&testClient, "spBv1.0/GroupId/NBIRTH/NodeId", 0);
-    EXPECT_DATA(&testClient, "spBv1.0/GroupId/DBIRTH/NodeId/DeviceName", 1);
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/NBIRTH/NodeId", 0);
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/DBIRTH/NodeId/DeviceName", 1);
 
     int32_t executeTime = 5;
     int32_t value = 5;
@@ -300,20 +414,16 @@ TEST_F(BrokerTests, NodeWithDeviceSameTime)
 
     executeTime = node.execute(executeTime);
 
-    EXPECT_DATA(&testClient, "spBv1.0/GroupId/NDATA/NodeId", 2);
-    EXPECT_DATA(&testClient, "spBv1.0/GroupId/DDATA/NodeId/DeviceName", 3);
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/NDATA/NodeId", 2);
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/DDATA/NodeId/DeviceName", 3);
 
     node.stop();
 }
 
 // Tests a node with a Primary host
-TEST_F(BrokerTests, NodeWithPrimaryHost)
+TYPED_TEST_P(BrokerTests, NodeWithPrimaryHost)
 {
     int retries = 0;
-
-    TestClientUtility testClient;
-
-    testClient.connect("localhost", 1883);
 
     NodeOptions nodeOptions = {
         "GroupId", "NodeId", "MyPrimary", 5, NODE_CONTROL_NONE};
@@ -329,6 +439,9 @@ TEST_F(BrokerTests, NodeWithPrimaryHost)
 
     Node node = Node(&nodeOptions);
 
+    TestClientUtility testClient;
+    testClient.connect("localhost", 1883);
+
     Device testDevice = Device("DeviceName", 5);
 
     SimpleMetric testDeviceMetric = SimpleMetric("MetricName", 20, METRIC_DATA_TYPE_INT32);
@@ -336,7 +449,7 @@ TEST_F(BrokerTests, NodeWithPrimaryHost)
 
     SimpleMetric testNodeMetric = SimpleMetric("MetricName", 20, METRIC_DATA_TYPE_INT32);
 
-    node.addClient<PahoClient>(&clientOptions);
+    node.addClient<TypeParam>(&clientOptions);
     node.addDevice(&testDevice);
     node.addMetric(&testNodeMetric);
     node.enable();
@@ -354,8 +467,8 @@ TEST_F(BrokerTests, NodeWithPrimaryHost)
 
     ASSERT_TRUE(node.isActive());
 
-    EXPECT_DATA(&testClient, "spBv1.0/GroupId/NBIRTH/NodeId", 0);
-    EXPECT_DATA(&testClient, "spBv1.0/GroupId/DBIRTH/NodeId/DeviceName", 1);
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/NBIRTH/NodeId", 0);
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/DBIRTH/NodeId/DeviceName", 1);
 
     testClient.publish("STATE/MyPrimary", (void *)"OFFLINE", 7, true);
 
@@ -385,20 +498,16 @@ TEST_F(BrokerTests, NodeWithPrimaryHost)
 
     executeTime = node.execute(executeTime);
 
-    EXPECT_DATA(&testClient, "spBv1.0/GroupId/NBIRTH/NodeId", 0);
-    EXPECT_DATA(&testClient, "spBv1.0/GroupId/DBIRTH/NodeId/DeviceName", 1);
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/NBIRTH/NodeId", 0);
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/DBIRTH/NodeId/DeviceName", 1);
 
     node.stop();
 }
 
 // Tests rebirth commands
-TEST_F(BrokerTests, NodeWithRebirthCommand)
+TYPED_TEST_P(BrokerTests, NodeWithRebirthCommand)
 {
     int retries = 0;
-
-    TestClientUtility testClient;
-
-    testClient.connect("localhost", 1883);
 
     NodeOptions nodeOptions = {
         "GroupId", "NodeId", NULL, 5, NODE_CONTROL_REBIRTH};
@@ -414,6 +523,9 @@ TEST_F(BrokerTests, NodeWithRebirthCommand)
 
     Node node = Node(&nodeOptions);
 
+    TestClientUtility testClient;
+    testClient.connect("localhost", 1883);
+
     Device testDevice = Device("DeviceName", 5);
 
     SimpleMetric testDeviceMetric = SimpleMetric("MetricName", 20, METRIC_DATA_TYPE_INT32);
@@ -421,7 +533,7 @@ TEST_F(BrokerTests, NodeWithRebirthCommand)
 
     SimpleMetric testNodeMetric = SimpleMetric("MetricName", 20, METRIC_DATA_TYPE_INT32);
 
-    node.addClient<PahoClient>(&clientOptions);
+    node.addClient<TypeParam>(&clientOptions);
     node.addDevice(&testDevice);
     node.addMetric(&testNodeMetric);
     node.enable();
@@ -437,8 +549,8 @@ TEST_F(BrokerTests, NodeWithRebirthCommand)
 
     ASSERT_TRUE(node.isActive());
 
-    EXPECT_DATA(&testClient, "spBv1.0/GroupId/NBIRTH/NodeId", 0);
-    EXPECT_DATA(&testClient, "spBv1.0/GroupId/DBIRTH/NodeId/DeviceName", 1);
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/NBIRTH/NodeId", 0);
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/DBIRTH/NodeId/DeviceName", 1);
 
     int32_t executeTime = 5;
     int32_t value = 5;
@@ -450,8 +562,8 @@ TEST_F(BrokerTests, NodeWithRebirthCommand)
 
     executeTime = node.execute(executeTime);
 
-    EXPECT_DATA(&testClient, "spBv1.0/GroupId/NDATA/NodeId", 2);
-    EXPECT_DATA(&testClient, "spBv1.0/GroupId/DDATA/NodeId/DeviceName", 3);
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/NDATA/NodeId", 2);
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/DDATA/NodeId/DeviceName", 3);
 
     org_eclipse_tahu_protobuf_Payload payload;
     get_next_payload(&payload);
@@ -468,10 +580,9 @@ TEST_F(BrokerTests, NodeWithRebirthCommand)
     // Memory
     free(binary_buffer);
     free_payload(&payload);
-    
 
     testClient.waitForData(MAX_RETRIES);
-    ASSERT_TRUE(testClient.hasData());    
+    ASSERT_TRUE(testClient.hasData());
     testClient.pop();
 
     while (!testClient.hasData() && retries++ < MAX_RETRIES)
@@ -480,8 +591,13 @@ TEST_F(BrokerTests, NodeWithRebirthCommand)
         this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 
-    EXPECT_DATA(&testClient, "spBv1.0/GroupId/NBIRTH/NodeId", 0);
-    EXPECT_DATA(&testClient, "spBv1.0/GroupId/DBIRTH/NodeId/DeviceName", 1);
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/NBIRTH/NodeId", 0);
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/DBIRTH/NodeId/DeviceName", 1);
 
     node.stop();
 }
+
+REGISTER_TYPED_TEST_SUITE_P(BrokerTests, NodeWithDisconnect, NodeDisconnectWhilePublishing, NodeWithDeviceSameTime, NodeWithPrimaryHost, NodeWithRebirthCommand);
+
+using BrokerTypes = ::testing::Types<PahoAsyncClient, PahoSyncClient>;
+INSTANTIATE_TYPED_TEST_SUITE_P(My, BrokerTests, BrokerTypes);

@@ -46,7 +46,8 @@ enum EventType {
     CLIENT_DISCONNECTED,
     CLIENT_ACTIVE,
     CLIENT_DEACTIVE,
-    CLIENT_DELIVERED
+    CLIENT_DELIVERED,
+    CLIENT_UNDELIVERED
 };
 
 typedef struct {
@@ -216,6 +217,7 @@ protected:
      * @param state
      */
     void delivered(PublishRequest *publishRequest);
+    void undelivered(PublishRequest *publishRequest);
     void messageReceived(const char *topicName, int topicLength, void *payload, int payloadLength);
     void setState(ClientState state);
     /**
@@ -313,6 +315,13 @@ public:
      * Used for Synchronous MQTT Clients.
      */
     virtual void sync() = 0;
+    /**
+     * @brief Returns whether the client is connected
+     * 
+     * @return true 
+     * @return false 
+     */
+    virtual bool isConnected() = 0;
 };
 
 #endif /* INCLUDE_SPARKPLUGCLIENT */

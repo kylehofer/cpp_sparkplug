@@ -28,7 +28,7 @@
  *
  * HISTORY:
  */
-#include "Metrics/Metric.h"
+#include "metrics/Metric.h"
 #include <iostream>
 
 Metric::~Metric()

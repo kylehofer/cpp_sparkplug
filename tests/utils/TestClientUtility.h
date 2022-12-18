@@ -32,6 +32,7 @@
 #ifndef TESTS_TESTCLIENTUTILITY
 #define TESTS_TESTCLIENTUTILITY
 
+#include <mosquitto.h>
 #include <queue>
 #include <cstddef>
 
@@ -64,6 +65,7 @@ public:
      */
     TestClientUtility() : client(NULL), ready(false){};
     ~TestClientUtility();
+
     /**
      * @brief Initialized a mosquitto client and connect to a Broker
      *

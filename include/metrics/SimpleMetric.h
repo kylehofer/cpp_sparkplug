@@ -1,7 +1,7 @@
 #ifndef INCLUDE_METRICS_SIMPLEMETRIC
 #define INCLUDE_METRICS_SIMPLEMETRIC
 
-#include "Metrics/Metric.h"
+#include "metrics/Metric.h"
 
 /**
  * @brief Simple Metric implementation.

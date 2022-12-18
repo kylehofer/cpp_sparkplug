@@ -2,11 +2,12 @@
 #define TESTS_MOCKSPARKPLUGCLIENT
 
 #include "gmock/gmock.h"
-#include "SparkplugClient.h"
+#include "clients/SparkplugClient.h"
 
 class MockSparkplugClient : public SparkplugClient
 {
 private:
+    bool connected = false;
 protected:
 public:
     MockSparkplugClient() : MockSparkplugClient(NULL, NULL){};
@@ -23,6 +24,7 @@ public:
 
     void connect()
     {
+        connected = true;
         SparkplugClient::connected();
     }
 
@@ -44,6 +46,11 @@ public:
     void sync()
     {
         
+    }
+
+    bool isConnected()
+    {
+        return connected;
     }
 };
 

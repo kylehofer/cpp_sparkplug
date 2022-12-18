@@ -35,9 +35,8 @@
 #include <chrono>
 #include <thread>
 #include <iostream>
-#include <algorithm>
 
-#include "Metrics/CallbackMetric.h"
+#include "metrics/CallbackMetric.h"
 #include "CommonTypes.h"
 
 #define NDATA "NDATA"
@@ -126,6 +125,10 @@ Node::~Node()
     {
         delete nodeBirthMetric;
     }
+
+#ifdef _GLIBCXX_HAS_GTHREADS
+    delete queueMutex;
+#endif
 }
 
 int Node::enable()
@@ -275,6 +278,7 @@ int Node::publish(Publishable *publishable, bool isBirth)
     publishRequest->isBirth = isBirth;
     publishRequest->publisher = (Publishable *)publishable;
     publishRequest->topic = topic;
+    publishRequest->token = -1;
 
     return getActiveClient()->request(publishRequest);
 }
@@ -376,13 +380,13 @@ int32_t Node::execute(int32_t executeTime)
     }
 
     for_each(devices.begin(), devices.end(),
-             [this, executeTime, &nextExecute](Device *device)
+            [this, executeTime, &nextExecute](Device *device)
              {
                  nextExecute = min(device->update(executeTime), nextExecute);
 
                  if (device->canPublish())
                  {
-                     publish((Publishable *)device);
+                    publish((Publishable *)device);
                  }
              });
 
@@ -518,11 +522,7 @@ bool Node::isActive()
     {
         return false;
     }
-    if (activeClient->getState() != CONNECTED)
-    {
-        return false;
-    }
-    return true;
+    return activeClient->isConnected();
 }
 
 void *copyBuffer(void *source, size_t length)
@@ -565,31 +565,56 @@ void Node::onEvent(SparkplugClient *client, EventType event, void *data)
     case CLIENT_DEACTIVE:
         break;
     case CLIENT_DELIVERED:
+    case CLIENT_UNDELIVERED:
         eventData = data;
         break;
     default:
         break;
     }
 
+#ifdef _GLIBCXX_HAS_GTHREADS
+    queueMutex->lock();
+#endif
+
     eventQueue.push_back({client, event, eventData});
+
+#ifdef _GLIBCXX_HAS_GTHREADS
+    queueMutex->unlock();
+#endif
 }
 
 void Node::processEvents()
 {
     while (!eventQueue.empty())
     {
+
+#ifdef _GLIBCXX_HAS_GTHREADS
+        queueMutex->lock();
+#endif
+
         ClientEventData eventData = eventQueue.front();
         eventQueue.pop_front();
+
+#ifdef _GLIBCXX_HAS_GTHREADS
+        queueMutex->unlock();
+#endif
 
         switch (eventData.eventType)
         {
         case CLIENT_DELIVERED:
-            {
-                Publishable* publishable;
-                publishable = (Publishable*) eventData.data;
-                publishable->published();
-            }
-            break;
+        {
+            Publishable *publishable;
+            publishable = (Publishable *)eventData.data;
+            publishable->published();
+        }
+        break;
+        case CLIENT_UNDELIVERED:
+        {
+            Publishable *publishable;
+            publishable = (Publishable *)eventData.data;
+            publishable->published();
+        }
+        break;
         case CLIENT_MESSAGE:
         {
             MessageEventStruct *messageData;
@@ -623,5 +648,4 @@ void Node::processEvents()
             break;
         }
     }
-
 }

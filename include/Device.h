@@ -33,7 +33,7 @@
 #define INCLUDE_DEVICE
 
 #include "Publishable.h"
-#include "Metrics/CallbackMetric.h"
+#include "metrics/CallbackMetric.h"
 
 #define DEVICE_CONTROL_NONE 0
 #define DEVICE_CONTROL_REBIRTH 0b1

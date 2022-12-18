@@ -29,7 +29,7 @@
  * HISTORY:
  */
 
-#include "SparkplugClient.h"
+#include "clients/SparkplugClient.h"
 #include <iostream>
 
 using namespace std;
@@ -85,16 +85,17 @@ int SparkplugClient::activate()
         return 0;
     }
 
+    setPrimary(true);
+
     int returnCode;
     returnCode = subscribeToCommands();
 
     if (returnCode < 0)
     {
         // TODO: Error
+        setPrimary(false);
         return returnCode;
     }
-
-    setPrimary(true);
 
     return 0;
 }
@@ -211,6 +212,8 @@ int SparkplugClient::processRequest(PublishRequest *publishRequest)
         return -1;
     }
 
+    setState(PUBLISHING_PAYLOAD);
+
     org_eclipse_tahu_protobuf_Payload *payload = publishRequest->publisher->getPayload(publishRequest->isBirth);
 
     uint8_t *buffer;
@@ -262,6 +265,12 @@ void SparkplugClient::disconnected(char *cause)
 void SparkplugClient::delivered(PublishRequest *publishRequest)
 {
     handler->onEvent(this, CLIENT_DELIVERED, publishRequest->publisher);
+    SparkplugClient::destroyRequest(publishRequest);
+}
+
+void SparkplugClient::undelivered(PublishRequest *publishRequest)
+{
+    handler->onEvent(this, CLIENT_UNDELIVERED, publishRequest->publisher);
     SparkplugClient::destroyRequest(publishRequest);
 }
 
