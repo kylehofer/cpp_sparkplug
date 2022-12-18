@@ -2,7 +2,7 @@
 
 #include <tahu.h>
 
-#include "Metrics/SimpleMetric.h"
+#include "metrics/SimpleMetric.h"
 
 typedef struct
 {

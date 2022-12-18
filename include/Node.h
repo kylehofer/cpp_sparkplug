@@ -36,12 +36,13 @@
 #include "Publishable.h"
 #include "Publisher.h"
 #include "Device.h"
-#include "SparkplugClient.h"
+#include "clients/SparkplugClient.h"
 #include <tahu.h>
 #include <vector>
 #include <deque>
 #include <forward_list>
-#include "Metrics/CallbackMetric.h"
+#include "metrics/CallbackMetric.h"
+#include <mutex>
 
 using namespace std;
 
@@ -94,7 +95,8 @@ typedef struct
     int enabledCommands;
 } NodeOptions;
 
-typedef struct {
+typedef struct
+{
     SparkplugClient *client;
     EventType eventType;
     void *data;
@@ -119,7 +121,11 @@ private:
     SparkplugClientMode hostMode;
     vector<SparkplugClient *> clients;
     forward_list<Device *> devices;
-    deque<ClientEventData> eventQueue; 
+    deque<ClientEventData> eventQueue;
+
+#ifdef _GLIBCXX_HAS_GTHREADS
+    mutex *queueMutex = new mutex();
+#endif
 
     // Special Command Metrics
     CallbackMetric *nodeBirthMetric = NULL;
@@ -210,6 +216,7 @@ private:
      * This function is thread safe.
      */
     void processEvents();
+
 protected:
 public:
     /**
@@ -294,13 +301,13 @@ public:
 
     /**
      * @brief Called by all SparkplugClients when they when MQTT events occur.
-     * Events are queued and then processed later in a thread safe manner. 
-     * 
+     * Events are queued and then processed later in a thread safe manner.
+     *
      * @param client The client responsible for the event
      * @param eventType
      * @param data Optional data that accompanies the event.
      */
-    void onEvent(SparkplugClient *client, EventType eventType, void* data);
+    void onEvent(SparkplugClient *client, EventType eventType, void *data);
 
     using Publishable::addMetric;
     using Publishable::canPublish;

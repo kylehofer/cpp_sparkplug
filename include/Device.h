@@ -33,7 +33,7 @@
 #define INCLUDE_DEVICE
 
 #include "Publishable.h"
-#include "Metrics/CallbackMetric.h"
+#include "metrics/CallbackMetric.h"
 
 #define DEVICE_CONTROL_NONE 0
 #define DEVICE_CONTROL_REBIRTH 0b1
@@ -70,8 +70,8 @@ public:
     /**
      * @brief Set the publisher responsible for this Device.
      * Allows to device to request publishes for rebirths or COV metrics
-     * 
-     * @param publisher 
+     *
+     * @param publisher
      */
     void setPublisher(Publisher *publisher);
 

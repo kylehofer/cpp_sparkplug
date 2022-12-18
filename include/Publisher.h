@@ -1,6 +1,6 @@
 /*
  * File: Publisher.h
- * Project: sparkplug_c
+ * Project: cpp_sparkplug
  * Created Date: Wednesday November 30th 2022
  * Author: Kyle Hofer
  *

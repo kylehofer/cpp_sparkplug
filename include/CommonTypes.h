@@ -1,6 +1,6 @@
 /*
  * File: CommonTypes.h
- * Project: sparkplug_c
+ * Project: cpp_sparkplug
  * Created Date: Thursday December 1st 2022
  * Author: Kyle Hofer
  *

@@ -40,16 +40,19 @@
 #define MAX_BUFFER_LENGTH 512
 #define PUBLISH_RETRIES 5
 
-enum EventType {
+enum EventType
+{
     CLIENT_MESSAGE,
     CLIENT_CONNECTED,
     CLIENT_DISCONNECTED,
     CLIENT_ACTIVE,
     CLIENT_DEACTIVE,
-    CLIENT_DELIVERED
+    CLIENT_DELIVERED,
+    CLIENT_UNDELIVERED
 };
 
-typedef struct {
+typedef struct
+{
     const char *topicName;
     int topicLength;
     void *payload;
@@ -66,7 +69,7 @@ class ClientEventHandler
 private:
 protected:
 public:
-    virtual void onEvent(SparkplugClient *client, EventType eventType, void* data) = 0;
+    virtual void onEvent(SparkplugClient *client, EventType eventType, void *data) = 0;
 };
 
 typedef int DeliveryToken;
@@ -216,6 +219,7 @@ protected:
      * @param state
      */
     void delivered(PublishRequest *publishRequest);
+    void undelivered(PublishRequest *publishRequest);
     void messageReceived(const char *topicName, int topicLength, void *payload, int payloadLength);
     void setState(ClientState state);
     /**
@@ -313,6 +317,13 @@ public:
      * Used for Synchronous MQTT Clients.
      */
     virtual void sync() = 0;
+    /**
+     * @brief Returns whether the client is connected
+     *
+     * @return true
+     * @return false
+     */
+    virtual bool isConnected() = 0;
 };
 
 #endif /* INCLUDE_SPARKPLUGCLIENT */

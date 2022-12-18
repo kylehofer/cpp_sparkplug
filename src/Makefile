@@ -28,7 +28,7 @@ CPPFLAGS=$(DEBUG) $(OPT) $(WARN) $(PTHREAD) -std=c++11
 #  LINKER FLAGS  #
 LD=g++
 LFLAGS=-I${INCLUDE_DIR} -fPIC
-LDFLAGS=$(PTHREAD) -lpaho-mqtt3as -ltahu
+LDFLAGS=$(PTHREAD) -lpaho-mqtt3as -lpaho-mqtt3cs -ltahu
 
 #  UTILITY  #
 MKDIR_P = mkdir -p

@@ -1,7 +1,7 @@
 /*
- * File: PahoClient.h
+ * File: PahoSyncClient.h
  * Project: cpp_sparkplug
- * Created Date: Friday November 18th 2022
+ * Created Date: Tuesday December 13th 2022
  * Author: Kyle Hofer
  *
  * MIT License
@@ -29,38 +29,24 @@
  * HISTORY:
  */
 
-#ifndef INCLUDE_PAHOCLIENT
-#define INCLUDE_PAHOCLIENT
+#ifndef INCLUDE_PAHOSYNCCLIENT
+#define INCLUDE_PAHOSYNCCLIENT
 
-#include "SparkplugClient.h"
-#include "CommonTypes.h"
-#include "MQTTAsync.h"
-#include <mutex>
-#include <queue>
+#include "clients/PahoClient.h"
+#include "MQTTClient.h"
 
 using namespace std;
 
 /**
  * @brief An Eclipse Paho implementation of a SparkplugClient
- * Implements an asynchronous client and manages queues for handling requests.
+ * Implements a synchronous client and manages queues for handling requests.
  */
-class PahoClient : SparkplugClient
+class PahoSyncClient : public PahoClient
 {
 private:
-    MQTTAsync client;
-    MQTTAsync_connectOptions connectionOptions;
-    queue<PublishRequest *> publishQueue;
-    MQTTAsync_willOptions will = MQTTAsync_willOptions_initializer;
-    static mutex callbackLock;
-    /**
-     * @brief Used to initiate a publish from the PublishRequest queue. If the queue is empty the Client will be set to a Connected State.
-     * If there are requests in the queue then the front item of the queue will be published and the Client will be set to a Publishing State.
-     */
-    void publishFromQueue();
-    /**
-     * @brief Dumps the publish queue freeing up used memory
-     */
-    void dumpQueue();
+    MQTTClient client;
+    MQTTClient_connectOptions connectionOptions;
+    MQTTClient_willOptions will = MQTTClient_willOptions_initializer;
 
 protected:
     /**
@@ -110,31 +96,21 @@ protected:
      * @return 0 if the client was configured successfully
      */
     int configureClient(ClientOptions *options);
-    /**
-     * @brief Sets the SparkplugClient as the Primary Client. If set to false the PublishRequest queue will be dumped.
-     *
-     * @param primary
-     */
-    void setPrimary(bool primary);
-    using SparkplugClient::getHandler;
-    using SparkplugClient::getPrimary;
-    using SparkplugClient::getState;
-    using SparkplugClient::setState;
 
 public:
     /**
      * @brief Construct a new Paho MQTT Client
      *
      */
-    PahoClient();
+    PahoSyncClient() : PahoClient() {}
     /**
      * @brief Construct a new Paho MQTT Client
      *
      * @param handler The Event Handler that manages the callbacks from the Client
      * @param options The options for configuring the MQTT Client
      */
-    PahoClient(ClientEventHandler *handler, ClientOptions *options);
-    ~PahoClient();
+    PahoSyncClient(ClientEventHandler *handler, ClientOptions *options) : PahoClient(handler, options) {}
+    ~PahoSyncClient();
     /**
      * @brief Callback method for when a publish has been delivered on a client.
      * The token is used to match to a SparkplugRequest. The client will inform the EventHandler of the
@@ -144,15 +120,6 @@ public:
      * @param token The unique token of the request
      */
     void onDelivery(DeliveryToken token);
-    /**
-     * @brief Callback method for when a publish failed delivery on the client.
-     * The Client will re-attempt to send the SparkplugRequest a few times before dumping the request.
-     * Finally more requests will be published if the queue contains items
-     *
-     * @param token The unique token of the failed request
-     */
-    void onDeliveryFailure(DeliveryToken token);
-
     /**
      * @brief Callback method when the Client successfully connects to a MQTT Host. Will inform the EventHandler that the Client has connected.
      */
@@ -164,12 +131,6 @@ public:
      */
     void onConnectFailure(int responseCode);
     /**
-     * @brief Callback method when the Client disconnects from a MQTT Host. Will inform the EventHandler that the Client has Disconnected.
-     * Marks the Client as Disconnected
-     * @param cause The cause of the disconnection
-     */
-    void onDisconnect(char *cause);
-    /**
      * @brief Callback when the Client has received a message from any of the Subscribed topics.
      *
      * @param topicName The topic name of the message
@@ -178,27 +139,20 @@ public:
      * @param payloadLength The length of the payload
      * @return int
      */
-    int onMessage(char *topicName, int topicLength, MQTTAsync_message *message);
-    /**
-     * @brief Handles a request to publish data to the MQTT Host
-     * If requests are being published then the requests is added to the queue
-     *
-     * @param publishRequest
-     * @return int
-     */
-    int request(PublishRequest *publishRequest);
-
+    int onMessage(char *topicName, int topicLength, MQTTClient_message *message);
     /**
      * @brief Used to synchronise the MQTT client.
      * As the Paho Client is async this function does nothing.
-     * 
+     *
      */
-    void sync() {};
-
+    void sync();
     /**
-     * @brief Callback for when Node/Device topics have successfully subscribed.
+     * @brief Returns whether the client is connected
+     *
+     * @return true
+     * @return false
      */
-    void onCommandSubscription();
+    bool isConnected();
 };
 
-#endif /* INCLUDE_PAHOCLIENT */
+#endif /* INCLUDE_PAHOSYNCCLIENT */

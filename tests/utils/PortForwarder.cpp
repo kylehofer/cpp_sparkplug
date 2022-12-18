@@ -23,56 +23,8 @@ using ::this_thread::sleep_for;
 #define MAX_RETRIES 400
 #define RETRY_TIMEOUT 5
 
-#define FORWARDER_BUFFER 4096
+#define FORWARDER_BUFFER_SIZE 4096
 #define LISTENER_BACKLOG 40
-
-/**
- * @brief
- *
- * @param source
- * @param destination
- * @param stop
- */
-void listener(int source, int destination, bool *stop)
-{
-    struct pollfd pfd[1];
-
-    pfd[0].fd = source;
-    pfd[0].events = POLLIN;
-
-    char buffer[FORWARDER_BUFFER];
-    int readLength, writeLength, written;
-
-    while (!(*stop))
-    {
-        poll(pfd, 1, RETRY_TIMEOUT);
-        if ((pfd[0].revents & (POLLIN)))
-        {
-            readLength = read(source, buffer, FORWARDER_BUFFER);
-            written = 0;
-            if (readLength < 0)
-            {
-                break;
-            }
-            while (written < readLength)
-            {
-                writeLength = write(destination, buffer + written, readLength - written);
-
-                if (writeLength == -1)
-                {
-                    break;
-                }
-
-                written += writeLength;
-            }
-        }
-    }
-
-    shutdown(source, SHUT_RD);
-    shutdown(destination, SHUT_WR);
-    close(source);
-    close(destination);
-}
 
 int PortForwarder::openListener(int port)
 {
@@ -210,17 +162,85 @@ bool PortForwarder::portCheck(int port, int maxRetries)
     return retries <= maxRetries;
 }
 
+void PortForwarder::closeSocket(int socket)
+{
+    char buffer[FORWARDER_BUFFER_SIZE];
+
+    // Assuring socket is empty before closing
+    while (read(socket, buffer, FORWARDER_BUFFER_SIZE) > 0)
+    {
+    }
+
+    close(socket);
+}
+
 PortForwarder::~PortForwarder()
 {
-    if (!isStopped)
+    if (!isStopped())
     {
         stop();
     }
+
+    delete portLock;
+}
+
+bool PortForwarder::isBlocked()
+{
+    lock_guard<mutex> guard(*portLock);
+    return blocked;
+}
+
+bool PortForwarder::isStopped()
+{
+    lock_guard<mutex> guard(*portLock);
+    return stopped;
+}
+
+void PortForwarder::listener(int source, int destination)
+{
+    struct pollfd pfd[1];
+
+    pfd[0].fd = source;
+    pfd[0].events = POLLIN;
+
+    char buffer[FORWARDER_BUFFER_SIZE];
+    int readLength, writeLength, written;
+
+    while (!isStopped())
+    {
+        poll(pfd, 1, RETRY_TIMEOUT);
+        if ((pfd[0].revents & (POLLIN)))
+        {
+            readLength = read(source, buffer, FORWARDER_BUFFER_SIZE);
+            written = 0;
+            if (readLength < 0)
+            {
+                break;
+            }
+            while (!isBlocked() && written < readLength)
+            {
+                writeLength = write(destination, buffer + written, readLength - written);
+
+                if (writeLength == -1)
+                {
+                    break;
+                }
+
+                written += writeLength;
+            }
+        }
+    }
+
+    // We shutdown our ports here, we will close them once all threads have closed.
+    shutdown(source, SHUT_RD);
+    shutdown(destination, SHUT_WR);
 }
 
 void PortForwarder::main()
 {
-    while (!isStopped)
+    sockets.push_back(outSocket);
+
+    while (!isStopped())
     {
         int clientSocket;
 
@@ -228,8 +248,18 @@ void PortForwarder::main()
 
         if (clientSocket >= 0)
         {
-            threads.push_back(new thread(listener, clientSocket, outSocket, &isStopped));
-            threads.push_back(new thread(listener, outSocket, clientSocket, &isStopped));
+            sockets.push_back(clientSocket);
+        }
+
+        if (isStopped())
+        {
+            break;
+        }
+
+        if (clientSocket >= 0)
+        {
+            threads.push_back(new thread(&PortForwarder::listener, this, clientSocket, outSocket));
+            threads.push_back(new thread(&PortForwarder::listener, this, outSocket, clientSocket));
         }
 
         sleep_for(milliseconds(RETRY_TIMEOUT));
@@ -238,15 +268,20 @@ void PortForwarder::main()
 
 int PortForwarder::start()
 {
-    isStopped = false;
+    portLock->lock();
+    stopped = false;
+    portLock->unlock();
+
     if ((inSocket = PortForwarder::openListener(inPort)) < 0)
     {
+        printf("Failed to open listener, stopping\n");
         stop();
         return -1;
     }
 
     if ((outSocket = PortForwarder::openOutput(outPort)) < 0)
     {
+        printf("Failed to open output, stopping\n");
         stop();
         return -1;
     }
@@ -256,7 +291,9 @@ int PortForwarder::start()
 
 void PortForwarder::stop()
 {
-    isStopped = true;
+    portLock->lock();
+    stopped = true;
+    portLock->unlock();
 
     for (auto running : threads)
     {
@@ -266,10 +303,28 @@ void PortForwarder::stop()
 
     threads.clear();
 
+    for (auto socket : sockets)
+    {
+        PortForwarder::closeSocket(socket);
+    }
+
+    sockets.clear();
+
     if (inSocket >= 0)
     {
-        shutdown(inSocket, SHUT_RD);
         close(inSocket);
         inSocket = -1;
     }
+}
+
+void PortForwarder::block()
+{
+    lock_guard<mutex> guard(*portLock);
+    blocked = true;
+}
+
+void PortForwarder::unblock()
+{
+    lock_guard<mutex> guard(*portLock);
+    blocked = false;
 }

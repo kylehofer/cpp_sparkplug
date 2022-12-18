@@ -32,7 +32,7 @@
 #ifndef INCLUDE_PUBLISHABLE
 #define INCLUDE_PUBLISHABLE
 
-#include "Metrics/Metric.h"
+#include "metrics/Metric.h"
 #include "CommonTypes.h"
 #include "Publisher.h"
 #include <tahu.h>

@@ -34,7 +34,7 @@
 #include <tahu.h>
 
 #include "Publishable.h"
-#include "Metrics/SimpleMetric.h"
+#include "metrics/SimpleMetric.h"
 
 TEST(Publishable, TestUpdate)
 {

@@ -3,6 +3,7 @@
 
 #include <thread>
 #include <vector>
+#include <mutex>
 
 using namespace std;
 
@@ -15,9 +16,13 @@ class PortForwarder
 private:
     int inPort, outPort;
     int inSocket, outSocket;
-    bool isStopped = false;
+    bool stopped = true;
+    bool blocked = false;
 
     vector<thread *> threads;
+    vector<int> sockets;
+
+    mutex *portLock = new mutex();
 
     /**
      * @brief Opens a listener socket
@@ -36,10 +41,44 @@ private:
     static int openOutput(int port);
 
     /**
+     * @brief closes a socket
+     *
+     * @param port
+     * @return int
+     */
+    static void closeSocket(int socket);
+
+    /**
      * @brief Main function that will be run on a seperate thread
      * Will monitor for new connections and setup a pair of connections for forwarding the data
      */
     void main();
+
+    /**
+     * @brief Sets up a listener that will forward all traffic from the source to the destination
+     *
+     * @param source
+     * @param destination
+     */
+    void listener(int source, int destination);
+
+    /**
+     * @brief Whether the port is blocking.
+     * Thread safe.
+     *
+     * @return true
+     * @return false output
+     */
+    bool isBlocked();
+
+    /**
+     * @brief Whether the port forwarding has stopped.
+     * Thread safe.
+     *
+     * @return true
+     * @return false
+     */
+    bool isStopped();
 
 public:
     PortForwarder(PortForwarder &&) = default;
@@ -55,9 +94,23 @@ public:
 
     /**
      * @brief Stops port forwarding, and closes active threads.
-     *
+     *output
      */
     void stop();
+
+    /**
+     * @brief Causes the port forwarder to start blocking traffic.
+     * Thread safe.
+     *
+     */
+    void block();
+
+    /**
+     * @brief Causes the port forwarder to stop blocking traffic.
+     * Thread safe.
+     *
+     */
+    void unblock();
 
     /**
      * @brief Utility method for checking if a port is open

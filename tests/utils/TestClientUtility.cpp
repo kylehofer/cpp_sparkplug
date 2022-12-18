@@ -1,6 +1,6 @@
 /*
  * File: TestClientUtility.cpp
- * Project: sparkplug_c
+ * Project: cpp_sparkplug
  * Created Date: Monday November 28th 2022
  * Author: Kyle Hofer
  *

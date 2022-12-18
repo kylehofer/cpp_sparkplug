@@ -1,6 +1,6 @@
 /*
  * File: CallbackMetric.h
- * Project: sparkplug_c
+ * Project: cpp_sparkplug
  * Created Date: Sunday December 4th 2022
  * Author: Kyle Hofer
  *
@@ -36,13 +36,13 @@
 #include <stdlib.h>
 #include <functional>
 #include "CommonTypes.h"
-#include "Metrics/Metric.h"
+#include "metrics/Metric.h"
 
 class CallbackMetric;
 
 /**
  * @brief Class for handling when a Metric has recieved a command.
- * 
+ *
  */
 class CommandHandler
 {
@@ -52,7 +52,7 @@ public:
 
 /**
  * @brief This class represents a Metric that can fire callbacks when a command is received by a metric.
- * 
+ *
  */
 class CallbackMetric : Metric
 {
@@ -102,8 +102,8 @@ public:
     /**
      * @brief Sets the command handler for the metric.
      * This handler have onMetricCommand called when a command is received for this metric.
-     * 
-     * @param handler 
+     *
+     * @param handler
      */
     void setCommandHandler(CommandHandler *handler)
     {
@@ -113,8 +113,8 @@ public:
     /**
      * @brief Set the command callback for this metric.
      * This callback will be executed when a command is received for this metric.
-     * 
-     * @param callback 
+     *
+     * @param callback
      */
     void setCommandCallback(function<void(CallbackMetric *metric, org_eclipse_tahu_protobuf_Payload_Metric *payload)> callback)
     {
@@ -123,8 +123,8 @@ public:
 
     /**
      * @brief Informs the Command metric a Payload Metric has been received for this Metric.
-     * 
-     * @param metric 
+     *
+     * @param metric
      */
     void onCommand(org_eclipse_tahu_protobuf_Payload_Metric *metric)
     {

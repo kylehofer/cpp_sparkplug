@@ -31,7 +31,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "MockSparkplugClient.h"
+#include "mocks/MockSparkplugClient.h"
 #include "Node.h"
 
 const char CLIENT_ADDRESS[] = "tcp://192.168.1.20:1883";

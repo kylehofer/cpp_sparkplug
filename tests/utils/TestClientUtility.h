@@ -1,6 +1,6 @@
 /*
  * File: TestClientUtility.cpp
- * Project: sparkplug_c
+ * Project: cpp_sparkplug
  * Created Date: Monday November 28th 2022
  * Author: Kyle Hofer
  *
@@ -32,6 +32,7 @@
 #ifndef TESTS_TESTCLIENTUTILITY
 #define TESTS_TESTCLIENTUTILITY
 
+#include <mosquitto.h>
 #include <queue>
 #include <cstddef>
 
@@ -64,6 +65,7 @@ public:
      */
     TestClientUtility() : client(NULL), ready(false){};
     ~TestClientUtility();
+
     /**
      * @brief Initialized a mosquitto client and connect to a Broker
      *
