@@ -69,8 +69,8 @@ static std::thread *brokerThread = nullptr;
 template <typename T>
 class BrokerTests : public testing::Test
 {
-    clients /
-        protected : static void SetUpTestSuite()
+protected:
+    static void SetUpTestSuite()
     {
 
         if (brokerThread == nullptr)
@@ -99,8 +99,6 @@ class BrokerTests : public testing::Test
 };
 
 TYPED_TEST_SUITE_P(BrokerTests);
-
-// std::thread *BrokerTests::brokerThread = nullptr;
 
 /**
  * @brief Utility method for checking messages sequences
