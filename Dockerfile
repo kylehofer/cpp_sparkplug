@@ -12,7 +12,7 @@ RUN mkdir -p /install/usr/include/ /install/usr/lib/ && \
     cmake --build build/ --target package && \
     tar -xf build/*.tar.gz -C /install/usr --strip-components=1
 
-RUN cd / && git clone https://github.com/eclipse/tahu.git && cd tahu/c/core && make && \
+RUN cd / && git clone https://github.com/eclipse/tahu.git && cd tahu/c/core && make -j4 && \
     cp lib/* /install/usr/lib/ && cp include/* /install/usr/include/
 
 RUN cd /usr/src/gtest && cmake CMakeLists.txt && make && cp lib/*.a /install/usr/lib/ && cp -r include/* /install/usr/include/ && \

@@ -52,8 +52,7 @@ file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "src/*.cpp")
 
 list(FILTER SOURCES EXCLUDE REGEX ".*b44ExpLogTable\\.cpp$")
 
-file(GLOB_RECURSE TAHU_SOURCES ${CMAKE_CURRENT_SOURCE_DIR} external/src/*.c)
-
+# file(GLOB_RECURSE TAHU_SOURCES ${CMAKE_CURRENT_SOURCE_DIR} external/src/*.c)
 IF(NOT CPP_SPARKPLUG_PAHO)
     list(FILTER SOURCES EXCLUDE REGEX "Paho")
 ENDIF()
@@ -63,7 +62,7 @@ IF(NOT ${BUILD_TARGET} STREQUAL "PICO")
 ENDIF()
 
 # Main library compiling
-add_library(cpp_sparkplug STATIC ${SOURCES} ${TAHU_SOURCES})
+add_library(cpp_sparkplug STATIC ${SOURCES})
 
 IF(${BUILD_TARGET} STREQUAL "PICO")
     target_link_libraries(cpp_sparkplug
@@ -73,30 +72,44 @@ ENDIF()
 
 target_include_directories(cpp_sparkplug PUBLIC "include/" "${CMAKE_CURRENT_SOURCE_DIR}/external/include")
 
+IF(FETCH_REMOTE)
+    FetchContent_Declare(
+        pico_tahu
+        GIT_REPOSITORY https://github.com/kylehofer/pico_tahu.git
+        GIT_TAG main
+    )
+    FetchContent_MakeAvailable(pico_tahu)
+ELSE()
+    add_subdirectory(./external/pico_tahu)
+ENDIF()
+
 IF(${BUILD_TARGET} STREQUAL "PICO")
     add_definitions(-DPICO)
     add_definitions(-DDEBUGGING)
     SET(MQTT_ENABLE_TESTING FALSE CACHE BOOL "")
 
-    include(FetchContent)
+    IF(FETCH_REMOTE)
+        FetchContent_Declare(
+            cpp_mqtt_client
+            GIT_REPOSITORY https://github.com/kylehofer/cpp_mqtt_client.git
+            GIT_TAG main
+        )
 
-    FetchContent_Declare(
-        cpp_mqtt_client
-        GIT_REPOSITORY https://github.com/kylehofer/cpp_mqtt_client.git
-        GIT_TAG main
-    )
+        FetchContent_Declare(
+            pico_tcp_client
+            GIT_REPOSITORY https://github.com/kylehofer/pico_tcp_client.git
+            GIT_TAG main
+            CMAKE_ARGS
+            -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+            -DCMAKE_C_COMPILER_WORKS=NO
+        )
 
-    FetchContent_Declare(
-        pico_tcp_client
-        GIT_REPOSITORY https://github.com/kylehofer/pico_tcp_client.git
-        GIT_TAG main
-        CMAKE_ARGS
-        -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-        -DCMAKE_C_COMPILER_WORKS=NO
-    )
-
-    FetchContent_MakeAvailable(pico_tcp_client)
-    FetchContent_MakeAvailable(cpp_mqtt_client)
+        FetchContent_MakeAvailable(pico_tcp_client)
+        FetchContent_MakeAvailable(cpp_mqtt_client)
+    ELSE()
+        add_subdirectory(./external/pico_tcp_client)
+        add_subdirectory(./external/cpp_mqtt_client)
+    ENDIF()
 
     target_link_libraries(cpp_sparkplug
         cpp_mqtt_client
@@ -147,6 +160,10 @@ IF(CPP_SPARKPLUG_PAHO)
     )
 ENDIF()
 
+target_link_libraries(cpp_sparkplug
+    pico_tahu
+)
+
 install(DIRECTORY DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR})
 install(DIRECTORY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 
@@ -157,4 +174,7 @@ install(TARGETS cpp_sparkplug
     ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
 
-add_subdirectory(picoDemo)
+IF(SPARKPLUG_ENABLE_TESTING AND NOT(${BUILD_TARGET} STREQUAL "PICO"))
+    enable_testing()
+    add_subdirectory(./tests)
+ENDIF()

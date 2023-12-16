@@ -423,8 +423,8 @@ void Node::begin()
         }
 
         nextExecute = execute(nextExecute);
-        if defined (__linux__)
-            std::this_thread::sleep_for(std::chrono::seconds(nextExecute));
+#if defined(__linux__)
+        std::this_thread::sleep_for(std::chrono::seconds(nextExecute));
 #endif
     }
 }

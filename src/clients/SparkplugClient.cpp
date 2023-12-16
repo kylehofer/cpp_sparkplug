@@ -138,12 +138,9 @@ int SparkplugClient::connect()
 
     if (!configured)
     {
-        printf("Not Configured\n");
         LOGGER("Cannot connect client as it has not been configured\n");
         return -1;
     }
-
-    printf("Calling internal method\n");
 
     int returnCode;
 
@@ -151,7 +148,6 @@ int SparkplugClient::connect()
 
     if (returnCode < 0)
     {
-        printf("Connect fail\n");
         setState(DISCONNECTED);
         // TODO: Connect Failure
         return returnCode;

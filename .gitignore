@@ -5,3 +5,7 @@ tmp/
 build/
 .envrc
 *.o
+external/
+_deps/
+.*
+CMakeFiles
