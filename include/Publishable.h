@@ -61,7 +61,7 @@ enum PublishableState
 class Publishable
 {
 private:
-    const char *name = NULL;
+    char *name = NULL;
     int32_t publishPeriod;
     int32_t nextPublish;
     PublishableState state = IDLE;

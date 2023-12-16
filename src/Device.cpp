@@ -32,6 +32,14 @@
 #include "Device.h"
 #include "metrics/CallbackMetric.h"
 
+#ifdef DEBUGGING
+#define LOGGER(format, ...) \
+    printf("Device: ");     \
+    printf(format, ##__VA_ARGS__)
+#else
+#define LOGGER(out, ...)
+#endif
+
 #define DEVICE_CONTROL_REBIRTH_NAME "Device Control/Rebirth"
 
 Device::Device() : Publishable()

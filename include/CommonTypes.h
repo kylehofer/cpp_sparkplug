@@ -32,6 +32,8 @@
 #ifndef INCLUDE_COMMONTYPES
 #define INCLUDE_COMMONTYPES
 
+#include <string>
+
 class Publishable;
 
 typedef int DeliveryToken;
@@ -47,5 +49,89 @@ typedef struct
     DeliveryToken token;
     int retryCount;
 } PublishRequest;
+
+class Uri
+{
+private:
+    std::string protocol;
+    std::string address;
+    int port = -1;
+
+    void init(std::string uri)
+    {
+        // tcp://192.168.40.250:1884
+        const std::string protocolIdentifier("://"), portSeparator(":");
+
+        std::size_t addressStart, portStart;
+
+        addressStart = uri.find(protocolIdentifier);
+        if (addressStart == std::string::npos)
+        {
+            // Error no protocol
+            addressStart = 0;
+        }
+        else
+        {
+            addressStart += protocolIdentifier.length();
+            protocol = uri.substr(0, addressStart);
+        }
+
+        portStart = uri.find(portSeparator, addressStart);
+
+        if (portStart == std::string::npos)
+        {
+            // Error no port
+            address = uri.substr(addressStart);
+            port = -1;
+        }
+        else
+        {
+            portStart += portSeparator.length();
+            address = uri.substr(addressStart, portStart - addressStart - 1);
+            port = stoi(uri.substr(portStart));
+        }
+    }
+
+protected:
+public:
+    Uri(std::string protocol, std::string address, int port) : protocol(protocol), address(address), port(port)
+    {
+    }
+
+    Uri(std::string uri)
+    {
+        init(uri);
+    }
+
+    Uri(const char *uri)
+    {
+        std::string input(uri);
+        init(input);
+    }
+
+    const std::string &getProtocol()
+    {
+        return protocol;
+    }
+
+    const std::string &getAddress()
+    {
+        return address;
+    }
+
+    const int &getPort()
+    {
+        return port;
+    }
+
+    const std::string toString()
+    {
+        if (port > 0)
+        {
+            return protocol + address + ":" + std::to_string(port);
+        }
+        return protocol + address;
+    }
+};
 
 #endif /* INCLUDE_COMMONTYPES */

@@ -63,6 +63,14 @@ using namespace std;
 #define NODE_CONTROL_REBOOT_NAME "Node Control/Reboot"
 #define NODE_CONTROL_NEXT_SERVER_NAME "Node Control/Next Server"
 
+#ifdef DEBUGGING
+#define LOGGER(format, ...) \
+    printf("Node: ");       \
+    printf(format, ##__VA_ARGS__)
+#else
+#define LOGGER(out, ...)
+#endif
+
 Node::Node() : Node(NULL)
 {
 }
@@ -410,12 +418,14 @@ void Node::begin()
         if (!running)
         {
             // Potential check for getting out of an endless loop
-            // Idea is to run this on its thread
+            // Idea is to run this on its own thread
             return;
         }
 
         nextExecute = execute(nextExecute);
-        std::this_thread::sleep_for(std::chrono::seconds(nextExecute));
+        if defined (__linux__)
+            std::this_thread::sleep_for(std::chrono::seconds(nextExecute));
+#endif
     }
 }
 

@@ -29,9 +29,10 @@
  * HISTORY:
  */
 
-#ifndef INCLUDE_SPARKPLUGCLIENT
-#define INCLUDE_SPARKPLUGCLIENT
+#ifndef INCLUDE_CLIENTS_SPARKPLUGCLIENT
+#define INCLUDE_CLIENTS_SPARKPLUGCLIENT
 
+#include <string>
 #include <tahu.h>
 #include "CommonTypes.h"
 #include "Publishable.h"
@@ -79,7 +80,7 @@ typedef int DeliveryToken;
  */
 typedef struct
 {
-    const char *address;
+    Uri address;
     const char *clientId;
     const char *username;
     const char *password;
@@ -326,4 +327,4 @@ public:
     virtual bool isConnected() = 0;
 };
 
-#endif /* INCLUDE_SPARKPLUGCLIENT */
+#endif /* INCLUDE_CLIENTS_SPARKPLUGCLIENT */

@@ -33,15 +33,34 @@
 #include <algorithm>
 #include <cstdio>
 
+#ifdef DEBUGGING
+#define LOGGER(format, ...) \
+    printf("Device: ");     \
+    printf(format, ##__VA_ARGS__)
+#else
+#define LOGGER(out, ...)
+#endif
+
 using namespace std;
 
 Publishable::~Publishable()
 {
+    if (this->name != NULL)
+    {
+        free(this->name);
+    }
 }
 
 Publishable::Publishable() : Publishable(NULL, 30) {}
 
-Publishable::Publishable(const char *name, int publishPeriod) : name(name), publishPeriod(publishPeriod), nextPublish(publishPeriod) {}
+Publishable::Publishable(const char *name, int publishPeriod) : publishPeriod(publishPeriod), nextPublish(publishPeriod)
+{
+
+    if (name != NULL)
+    {
+        this->name = strdup(name);
+    }
+}
 
 void Publishable::addMetric(Metric *metric)
 {

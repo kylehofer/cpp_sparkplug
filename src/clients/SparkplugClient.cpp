@@ -34,7 +34,13 @@
 
 using namespace std;
 
-#define SPARKPLUGCLIENT_LOGGER cout << "Sparkplug Client: "
+#ifdef DEBUGGING
+#define LOGGER(format, ...)       \
+    printf("Sparkplug Client: "); \
+    printf(format, ##__VA_ARGS__)
+#else
+#define LOGGER(out, ...)
+#endif
 
 SparkplugClient::SparkplugClient()
 {
@@ -54,7 +60,7 @@ int SparkplugClient::configure(ClientTopicOptions *topics)
 
     if (topics == NULL)
     {
-        SPARKPLUGCLIENT_LOGGER "Error: Client topics are not defined.\n";
+        LOGGER("Error: Client topics are not defined.\n");
         return -1;
     }
 
@@ -64,7 +70,7 @@ int SparkplugClient::configure(ClientTopicOptions *topics)
 
     if (returnCode < 0)
     {
-        SPARKPLUGCLIENT_LOGGER "Error configuring client\n";
+        LOGGER("Error configuring client\n");
         return returnCode;
     }
 
@@ -132,9 +138,12 @@ int SparkplugClient::connect()
 
     if (!configured)
     {
-        SPARKPLUGCLIENT_LOGGER << "Cannot connect client as it has not been configured\n";
+        printf("Not Configured\n");
+        LOGGER("Cannot connect client as it has not been configured\n");
         return -1;
     }
+
+    printf("Calling internal method\n");
 
     int returnCode;
 
@@ -142,6 +151,7 @@ int SparkplugClient::connect()
 
     if (returnCode < 0)
     {
+        printf("Connect fail\n");
         setState(DISCONNECTED);
         // TODO: Connect Failure
         return returnCode;
@@ -165,7 +175,7 @@ int SparkplugClient::disconnect()
     {
         // TODO: Disconnect Failure
         // return returnCode;
-        SPARKPLUGCLIENT_LOGGER "Failed to disconnect, possibly already disconnected\n";
+        LOGGER("Failed to disconnect, possibly already disconnected\n");
     }
     return 0;
 }
@@ -208,7 +218,7 @@ int SparkplugClient::processRequest(PublishRequest *publishRequest)
 {
     if (getState() == DISCONNECTED)
     {
-        SPARKPLUGCLIENT_LOGGER "Cannot publish payloads while disconnected\n";
+        LOGGER("Cannot publish payloads while disconnected\n");
         return -1;
     }
 
@@ -243,6 +253,7 @@ void SparkplugClient::activated()
     {
         return;
     }
+
     handler->onEvent(this, CLIENT_ACTIVE, nullptr);
 }
 
@@ -264,6 +275,7 @@ void SparkplugClient::disconnected(char *cause)
 
 void SparkplugClient::delivered(PublishRequest *publishRequest)
 {
+    LOGGER("Publish Request was delivered for %s on topic: %s\n", publishRequest->publisher->getName(), publishRequest->topic);
     handler->onEvent(this, CLIENT_DELIVERED, publishRequest->publisher);
     SparkplugClient::destroyRequest(publishRequest);
 }
