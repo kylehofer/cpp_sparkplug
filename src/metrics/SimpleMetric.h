@@ -41,7 +41,7 @@ public:
      *
      * @param payload
      */
-    void onCommand(org_eclipse_tahu_protobuf_Payload_Metric *payload){};
+    void onCommand(org_eclipse_tahu_protobuf_Payload_Metric __attribute__((unused)) * payload){};
 };
 
 #endif /* INCLUDE_METRICS_SIMPLEMETRIC */

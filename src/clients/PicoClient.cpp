@@ -204,8 +204,6 @@ int PicoClient::publishMessage(const char *topic, uint8_t *buffer, size_t length
 
 int PicoClient::configureClient(ClientOptions *options)
 {
-    int returnCode;
-
     this->options = options;
 
     client = MqttClient((Client *)&tcpClient);
@@ -308,7 +306,8 @@ void PicoClient::onDeliveryComplete(Token token)
     }
 }
 
-void PicoClient::onDeliveryFailure(Token token, int reasonCode)
+// TODO: Handle based off reason code
+void PicoClient::onDeliveryFailure(Token token, __attribute__((unused)) int reasonCode)
 {
     if (publishQueue.empty())
     {
@@ -335,7 +334,8 @@ void PicoClient::onDeliveryFailure(Token token, int reasonCode)
     }
 }
 
-void PicoClient::onSubscribeResult(Token token, vector<uint8_t> reasonCodes)
+// TODO: Handle based off reason codes
+void PicoClient::onSubscribeResult(Token token, __attribute__((unused)) vector<uint8_t> reasonCodes)
 {
     if (subscriptionToken == token)
     {
@@ -343,6 +343,7 @@ void PicoClient::onSubscribeResult(Token token, vector<uint8_t> reasonCodes)
     }
 }
 
-void PicoClient::onUnsubscribeResult(Token token, vector<uint8_t> reasonCodes)
+// TODO: Implement
+void PicoClient::onUnsubscribeResult(__attribute__((unused)) Token token, __attribute__((unused)) vector<uint8_t> reasonCodes)
 {
 }

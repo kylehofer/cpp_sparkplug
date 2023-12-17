@@ -323,6 +323,7 @@ void SparkplugClient::incrementBdSeq()
 
 void SparkplugClient::disconnected(char *cause)
 {
+    LOGGER("Disconnected. Reason: %s.", cause);
     setState(DISCONNECTED);
     handler->onEvent(this, CLIENT_DISCONNECTED, nullptr);
 }

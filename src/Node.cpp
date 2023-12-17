@@ -90,7 +90,7 @@ Node::Node(NodeOptions *options) : Publishable()
                 NODE_CONTROL_REBIRTH_NAME,
                 false,
                 METRIC_DATA_TYPE_BOOLEAN,
-                [this](CallbackMetric *metric, org_eclipse_tahu_protobuf_Payload_Metric *payload)
+                [this](__attribute__((unused)) CallbackMetric *metric, org_eclipse_tahu_protobuf_Payload_Metric *payload)
                 {
                     if (payload->value.boolean_value)
                     {

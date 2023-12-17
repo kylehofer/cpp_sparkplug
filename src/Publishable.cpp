@@ -136,7 +136,7 @@ const char *Publishable::getName()
     return name;
 }
 
-void Publishable::handleCommand(Publisher *publisher, void *payload, int payloadLength)
+void Publishable::handleCommand(__attribute__((unused)) Publisher *publisher, void *payload, int payloadLength)
 {
     // Decode the payload
     org_eclipse_tahu_protobuf_Payload sparkplugPayload = org_eclipse_tahu_protobuf_Payload_init_zero;

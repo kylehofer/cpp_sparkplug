@@ -34,11 +34,8 @@ set_target_properties(${name}
     ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
     PDB_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
-install(DIRECTORY "${PROJECT_SOURCE_DIR}/include/"
-    DESTINATION "include")
-
-install(DIRECTORY "${PROJECT_SOURCE_DIR}/external/include/"
-    DESTINATION "include")
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/src/"
+    DESTINATION "src")
 
 set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install")
 
@@ -70,7 +67,7 @@ IF(${BUILD_TARGET} STREQUAL "PICO")
         pico_cyw43_arch_lwip_poll)
 ENDIF()
 
-target_include_directories(cpp_sparkplug PUBLIC "include/" "${CMAKE_CURRENT_SOURCE_DIR}/external/include")
+target_include_directories(cpp_sparkplug PUBLIC "src/")
 
 IF(FETCH_REMOTE)
     FetchContent_Declare(
