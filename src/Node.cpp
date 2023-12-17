@@ -659,3 +659,8 @@ void Node::processEvents()
         }
     }
 }
+
+bool Node::isNode()
+{
+    return true;
+}

@@ -87,11 +87,6 @@ void PicoClient::setPrimary(bool isPrimary)
 
 int PicoClient::clientConnect()
 {
-    if (getState() != DISCONNECTED)
-    {
-        return 0;
-    }
-
     Uri uri = options->address;
 
     const string protocol = uri.getProtocol();
@@ -106,8 +101,6 @@ int PicoClient::clientConnect()
     }
 
     int returnCode;
-
-    setState(CONNECTING);
 
     returnCode = client.connect(
         uri.getAddress().c_str(),
@@ -131,7 +124,7 @@ int PicoClient::clientDisconnect()
 
     setState(DISCONNECTING);
 
-    int returnCode = client.disconnect(0);
+    int returnCode = client.disconnect(DISCONNECT_WITH_WILL_MESSAGE);
 
     if (returnCode == -1)
     {
@@ -228,7 +221,7 @@ int PicoClient::configureClient(ClientOptions *options)
         client.setPassword(password);
     }
 
-    client.setKeepAliveInterval(options->keepAliveInterval);
+    client.setKeepAliveInterval(options->keepAliveInterval / 1000);
     client.setCleanStart(1);
 
     if (will != nullptr)
@@ -236,7 +229,19 @@ int PicoClient::configureClient(ClientOptions *options)
         delete will;
     }
 
-    // TODO: Will
+    will = new WillProperties();
+
+    will->setWillTopic(topics->nodeDeathTopic, strlen(topics->nodeDeathTopic));
+
+    uint8_t *buffer;
+
+    size_t size = getWillPayload(&buffer);
+
+    will->setBinaryPayload((const char *)buffer, size);
+
+    free(buffer);
+
+    client.setWill(will);
 
     return 0;
 }
@@ -309,7 +314,6 @@ void PicoClient::onDeliveryFailure(Token token, int reasonCode)
     {
         return;
     }
-
     PublishRequest *publishRequest = publishQueue.front();
 
     if (publishRequest->token == token)

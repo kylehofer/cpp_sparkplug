@@ -128,6 +128,24 @@ int SparkplugClient::deactivate()
     return 0;
 }
 
+size_t SparkplugClient::getWillPayload(uint8_t **buffer)
+{
+    incrementBdSeq();
+
+    SimpleMetric bdSeqMetric = SimpleMetric("bdSeq", bdSeq, METRIC_DATA_TYPE_INT64);
+
+    org_eclipse_tahu_protobuf_Payload *payload = initializePayload(false);
+
+    bdSeqMetric.addToPayload(payload, true);
+
+    int length = encodePayload(payload, buffer);
+
+    free_payload(payload);
+    free(payload);
+
+    return length;
+}
+
 int SparkplugClient::connect()
 {
     if (getState() != DISCONNECTED)
@@ -142,6 +160,8 @@ int SparkplugClient::connect()
         return -1;
     }
 
+    LOGGER("Attempting to connect the client\n");
+
     int returnCode;
 
     returnCode = clientConnect();
@@ -152,6 +172,8 @@ int SparkplugClient::connect()
         // TODO: Connect Failure
         return returnCode;
     }
+
+    setState(CONNECTING);
     return 0;
 }
 
@@ -181,7 +203,29 @@ ClientState SparkplugClient::getState()
     return state;
 }
 
-int SparkplugClient::encodePayload(org_eclipse_tahu_protobuf_Payload *payload, uint8_t **buffer)
+void SparkplugClient::resetSequence()
+{
+    payloadSequence = 0;
+}
+
+org_eclipse_tahu_protobuf_Payload *SparkplugClient::initializePayload(bool hasSeq)
+{
+    org_eclipse_tahu_protobuf_Payload *payload = (org_eclipse_tahu_protobuf_Payload *)malloc(sizeof(org_eclipse_tahu_protobuf_Payload));
+
+    // Initialize payload
+    memset(payload, 0, sizeof(org_eclipse_tahu_protobuf_Payload));
+    payload->has_timestamp = true;
+    payload->timestamp = get_current_timestamp();
+    if (hasSeq)
+    {
+        LOGGER("Current Sequence Number: %u\n", payloadSequence);
+        payload->seq = payloadSequence++;
+        payload->has_seq = true;
+    }
+    return payload;
+}
+
+size_t SparkplugClient::encodePayload(org_eclipse_tahu_protobuf_Payload *payload, uint8_t **buffer)
 {
     size_t length = MAX_BUFFER_LENGTH;
     *buffer = (uint8_t *)malloc(length * sizeof(uint8_t));
@@ -220,7 +264,15 @@ int SparkplugClient::processRequest(PublishRequest *publishRequest)
 
     setState(PUBLISHING_PAYLOAD);
 
-    org_eclipse_tahu_protobuf_Payload *payload = publishRequest->publisher->getPayload(publishRequest->isBirth);
+    org_eclipse_tahu_protobuf_Payload *payload = initializePayload();
+
+    publishRequest->publisher->addToPayload(payload, publishRequest->isBirth);
+
+    if (publishRequest->publisher->isNode() && publishRequest->isBirth)
+    {
+        SimpleMetric bdSeqMetric = SimpleMetric("bdSeq", bdSeq, METRIC_DATA_TYPE_INT64);
+        bdSeqMetric.addToPayload(payload, true);
+    }
 
     uint8_t *buffer;
     int length = encodePayload(payload, &buffer);
@@ -256,11 +308,17 @@ void SparkplugClient::activated()
 void SparkplugClient::connected()
 {
     setState(CONNECTED);
+
     handler->onEvent(this, CLIENT_CONNECTED, nullptr);
     if (topics->primaryHostTopic != NULL)
     {
         subscribeToPrimaryHost();
     }
+}
+
+void SparkplugClient::incrementBdSeq()
+{
+    bdSeq = bdSeq == 255 ? 0 : bdSeq + 1;
 }
 
 void SparkplugClient::disconnected(char *cause)

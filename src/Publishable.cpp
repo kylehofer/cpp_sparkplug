@@ -114,21 +114,11 @@ void Publishable::publishing()
     setState(PUBLISHING);
 }
 
-org_eclipse_tahu_protobuf_Payload *Publishable::initializePayload(bool isBirth)
+void Publishable::addToPayload(org_eclipse_tahu_protobuf_Payload *payload, bool isBirth)
 {
-    org_eclipse_tahu_protobuf_Payload *payload = (org_eclipse_tahu_protobuf_Payload *)malloc(sizeof(org_eclipse_tahu_protobuf_Payload));
-    get_next_payload(payload);
-    return payload;
-}
-
-org_eclipse_tahu_protobuf_Payload *Publishable::getPayload(bool isBirth)
-{
-    org_eclipse_tahu_protobuf_Payload *payload = initializePayload(isBirth);
-
     nextPublish = publishPeriod;
     for_each(metrics.begin(), metrics.end(), [payload, isBirth](Metric *metric)
              { metric->addToPayload(payload, isBirth); });
-    return payload;
 }
 
 bool Publishable::canPublish()

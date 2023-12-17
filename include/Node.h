@@ -309,10 +309,12 @@ public:
      */
     void onEvent(SparkplugClient *client, EventType eventType, void *data);
 
+    virtual bool isNode() override;
+
     using Publishable::addMetric;
+    using Publishable::addToPayload;
     using Publishable::canPublish;
     using Publishable::getName;
-    using Publishable::getPayload;
     using Publishable::update;
 };
 

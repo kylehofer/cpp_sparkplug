@@ -54,3 +54,8 @@ void Device::setPublisher(Publisher *publisher)
 {
     this->publisher = publisher;
 }
+
+bool Device::isNode()
+{
+    return false;
+}

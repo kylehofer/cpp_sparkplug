@@ -36,6 +36,7 @@
 #include <tahu.h>
 #include "CommonTypes.h"
 #include "Publishable.h"
+#include "metrics/SimpleMetric.h"
 
 #define MAX_TOPIC_LENGTH 256
 #define MAX_BUFFER_LENGTH 512
@@ -124,17 +125,52 @@ private:
     ClientState state = DISCONNECTED;
     bool isPrimary = false;
     ClientEventHandler *handler = NULL;
+    int64_t bdSeq = 0;
+    uint8_t payloadSequence = 0;
+
     /**
      * @brief Encodes a Sparkplug protobuf payload into a raw byte buffer.
      *
      * @param payload The Sparkplug protobuf payload to encode
      * @param buffer A pointer to a buffer array that will contain the payload
-     * @return 0 if the encoding was a success
+     * @return The size of the encoded buffer
      */
-    int encodePayload(org_eclipse_tahu_protobuf_Payload *payload, uint8_t **buffer);
+    size_t encodePayload(org_eclipse_tahu_protobuf_Payload *payload, uint8_t **buffer);
+
+    /**
+     * @brief Increments the bdSeq
+     */
+    void incrementBdSeq();
+    /**
+     * @brief Resets the payload sequence
+     */
+    void resetSequence();
+    /**
+     * @brief Intializes a payload for publishing
+     * The returned payload needs to be freed
+     *
+     * @param hasSeq Whether the payload will have a sequence
+     * @return org_eclipse_tahu_protobuf_Payload*
+     */
+    org_eclipse_tahu_protobuf_Payload *initializePayload(bool hasSeq = true);
+
+    /**
+     * @brief Get the Sparkplug Payload that will be used to publish.
+     * @param isBirth
+     * @return org_eclipse_tahu_protobuf_Payload*
+     */
+    org_eclipse_tahu_protobuf_Payload *getPayload(bool isBirth = false);
 
 protected:
     ClientTopicOptions *topics;
+
+    /**
+     * @brief Builds a will payload
+     *
+     * @param buffer A pointer to a buffer to fill with the will payload
+     * @return size_t The size of the will payload
+     */
+    size_t getWillPayload(uint8_t **buffer);
 
     /**
      * @brief Get the ClientEventHandler

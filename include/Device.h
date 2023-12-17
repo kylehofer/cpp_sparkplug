@@ -75,10 +75,12 @@ public:
      */
     void setPublisher(Publisher *publisher);
 
+    virtual bool isNode() override;
+
     using Publishable::addMetric;
+    using Publishable::addToPayload;
     using Publishable::canPublish;
     using Publishable::getName;
-    using Publishable::getPayload;
     using Publishable::update;
 };
 

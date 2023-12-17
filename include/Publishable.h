@@ -80,15 +80,6 @@ private:
      */
     void setState(PublishableState);
 
-    /**
-     * @brief Initializes a base payload for adding metrics to.
-     * NOTE: Memory is allocated for the payload, and must be freed by the caller of this function.
-     *
-     * @param isBirth
-     * @return org_eclipse_tahu_protobuf_Payload*
-     */
-    org_eclipse_tahu_protobuf_Payload *initializePayload(bool isBirth);
-
 protected:
     void setPublishPeriod(int32_t publishPeriod);
 
@@ -137,11 +128,12 @@ public:
      */
     bool canPublish();
     /**
-     * @brief Get the Sparkplug Payload that will be used to publish.
-     * @param isBirth
-     * @return org_eclipse_tahu_protobuf_Payload*
+     * @brief Adds the metrics from a publisher to a protobuf payload
+     *
+     * @param payload A protobuf payload that the Metrics will be added to
+     * @param isBirth If the payload is a part of a birth message
      */
-    org_eclipse_tahu_protobuf_Payload *getPayload(bool isBirth = false);
+    void addToPayload(org_eclipse_tahu_protobuf_Payload *payload, bool isBirth = false);
     /**
      * @brief Get the name of the Publishable
      *
@@ -156,6 +148,14 @@ public:
      * @param message The message received
      */
     void handleCommand(Publisher *publisher, void *payload, int payloadLength);
+
+    /**
+     * @brief Returns whether the Publishable instance is a Node.
+     *
+     * @return true
+     * @return false
+     */
+    virtual bool isNode() = 0;
 };
 
 #endif /* INCLUDE_PUBLISHABLE */
