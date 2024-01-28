@@ -1,5 +1,5 @@
 /*
- * File: PicoClient.cpp
+ * File: CppMqttClient.cpp
  * Project: cpp_sparkplug
  * Created Date: Monday June 12th 2023
  * Author: Kyle Hofer
@@ -29,7 +29,7 @@
  * HISTORY:
  */
 
-#include "clients/PicoClient.h"
+#include "CppMqttClient.h"
 #include "CommonTypes.h"
 #include <iostream>
 #include <string>
@@ -37,17 +37,16 @@
 using namespace std;
 using namespace PicoMqtt;
 
-#define QOS QoS::ONE
+#define QOS QoS::ZERO
 
 #ifdef DEBUGGING
-#define LOGGER(format, ...) \
-    printf("PicoClient: "); \
+#define LOGGER(format, ...)    \
+    printf("CppMqttClient: "); \
     printf(format, ##__VA_ARGS__)
 #else
 #define LOGGER(out, ...)
 #endif
-
-void PicoClient::publishFromQueue()
+void CppMqttClient::publishFromQueue()
 {
     if (!isConnected())
     {
@@ -66,7 +65,7 @@ void PicoClient::publishFromQueue()
     }
 }
 
-void PicoClient::dumpQueue()
+void CppMqttClient::dumpQueue()
 {
     while (!publishQueue.empty())
     {
@@ -75,7 +74,7 @@ void PicoClient::dumpQueue()
     }
 }
 
-void PicoClient::setPrimary(bool isPrimary)
+void CppMqttClient::setPrimary(bool isPrimary)
 {
     SparkplugClient::setPrimary(isPrimary);
 
@@ -85,7 +84,7 @@ void PicoClient::setPrimary(bool isPrimary)
     }
 }
 
-int PicoClient::clientConnect()
+int CppMqttClient::clientConnect()
 {
     Uri uri = options->address;
 
@@ -104,18 +103,18 @@ int PicoClient::clientConnect()
 
     returnCode = client.connect(
         uri.getAddress().c_str(),
-        port, 30000);
+        port, options->connectTimeout);
 
     if (returnCode == -1)
     {
         LOGGER("Failed to initialize connection, return code %d\n", returnCode);
-        returnCode = EXIT_FAILURE;
+        returnCode = -1;
         return returnCode;
     }
     return 0;
 }
 
-int PicoClient::clientDisconnect()
+int CppMqttClient::clientDisconnect()
 {
     if (!isConnected())
     {
@@ -124,7 +123,7 @@ int PicoClient::clientDisconnect()
 
     setState(DISCONNECTING);
 
-    int returnCode = client.disconnect(DISCONNECT_WITH_WILL_MESSAGE);
+    int returnCode = client.disconnect(ReasonCode::DISCONNECT_WITH_WILL_MESSAGE);
 
     if (returnCode == -1)
     {
@@ -135,13 +134,13 @@ int PicoClient::clientDisconnect()
     return 0;
 }
 
-int PicoClient::subscribeToPrimaryHost()
+int CppMqttClient::subscribeToPrimaryHost()
 {
     int returnCode;
 
     SubscribePayload primaryHostPayload;
 
-    EncodedString primaryHostTopic(topics->primaryHostTopic, strlen(topics->primaryHostTopic));
+    EncodedString primaryHostTopic(topics->primaryHostTopic.c_str(), topics->primaryHostTopic.size());
 
     primaryHostPayload.setTopic(primaryHostTopic);
 
@@ -149,7 +148,7 @@ int PicoClient::subscribeToPrimaryHost()
 
     if (returnCode == -1)
     {
-        LOGGER("Failed to subscribe to %s, return code %d\n", topics->primaryHostTopic, returnCode);
+        LOGGER("Failed to subscribe to %s, return code %d\n", topics->primaryHostTopic.c_str(), returnCode);
         // TODO: Subscribe Failure
         return returnCode;
     }
@@ -157,14 +156,14 @@ int PicoClient::subscribeToPrimaryHost()
     return 0;
 }
 
-int PicoClient::subscribeToCommands()
+int CppMqttClient::subscribeToCommands()
 {
     int returnCode;
 
     SubscribePayload nodeCommandPayload, deviceCommandPayload;
 
-    EncodedString encodedNodeTopic(topics->nodeCommandTopic, strlen(topics->nodeCommandTopic));
-    EncodedString encodedDeviceTopic(topics->deviceCommandTopic, strlen(topics->deviceCommandTopic));
+    EncodedString encodedNodeTopic(topics->nodeCommandTopic.c_str(), topics->nodeCommandTopic.size());
+    EncodedString encodedDeviceTopic(topics->deviceCommandTopic.c_str(), topics->deviceCommandTopic.size());
 
     nodeCommandPayload.setTopic(encodedNodeTopic);
     deviceCommandPayload.setTopic(encodedDeviceTopic);
@@ -183,15 +182,16 @@ int PicoClient::subscribeToCommands()
     return 0;
 }
 
-int PicoClient::unsubscribeToCommands()
+int CppMqttClient::unsubscribeToCommands()
 {
     return 0;
 }
 
-int PicoClient::publishMessage(const char *topic, uint8_t *buffer, size_t length, DeliveryToken *token)
+int CppMqttClient::publishMessage(const string &topic, uint8_t *buffer, size_t length, DeliveryToken *token)
 {
-    EncodedString encodedTopic(topic, strlen(topic));
-    Payload payload(buffer, length);
+    EncodedString encodedTopic(topic.c_str(), topic.size());
+
+    Payload payload = Payload(buffer, length);
 
     *token = client.publish(encodedTopic, payload, QOS);
 
@@ -202,11 +202,11 @@ int PicoClient::publishMessage(const char *topic, uint8_t *buffer, size_t length
     return *token;
 }
 
-int PicoClient::configureClient(ClientOptions *options)
+int CppMqttClient::configureClient(ClientOptions *options)
 {
     this->options = options;
 
-    client = MqttClient((Client *)&tcpClient);
+    client = MqttClient(getClient());
     client.setHandler(this);
 
     client.setClientId(options->clientId, strlen(options->clientId));
@@ -219,17 +219,17 @@ int PicoClient::configureClient(ClientOptions *options)
         client.setPassword(password);
     }
 
-    client.setKeepAliveInterval(options->keepAliveInterval / 1000);
-    client.setCleanStart(1);
+    client.setKeepAliveInterval(options->keepAliveInterval);
+    client.setCleanStart(true);
 
-    if (will != nullptr)
+    if (will)
     {
         delete will;
     }
 
     will = new WillProperties();
 
-    will->setWillTopic(topics->nodeDeathTopic, strlen(topics->nodeDeathTopic));
+    will->setWillTopic(topics->nodeDeathTopic.c_str(), topics->nodeDeathTopic.size());
 
     uint8_t *buffer;
 
@@ -244,21 +244,21 @@ int PicoClient::configureClient(ClientOptions *options)
     return 0;
 }
 
-PicoClient::~PicoClient()
+CppMqttClient::~CppMqttClient()
 {
 }
 
-void PicoClient::sync()
+void CppMqttClient::sync()
 {
     client.sync();
 }
 
-bool PicoClient::isConnected()
+bool CppMqttClient::isConnected()
 {
     return client.connected();
 }
 
-int PicoClient::request(PublishRequest *publishRequest)
+int CppMqttClient::request(PublishRequest *publishRequest)
 {
     publishQueue.push(publishRequest);
     if (publishQueue.size() == 1 && isConnected())
@@ -268,31 +268,30 @@ int PicoClient::request(PublishRequest *publishRequest)
     return 0;
 }
 
-void PicoClient::onConnectionSuccess()
+void CppMqttClient::onConnectionSuccess()
 {
     connected();
 }
 
-void PicoClient::onConnectionFailure(int reasonCode)
+void CppMqttClient::onConnectionFailure(int reasonCode)
 {
     LOGGER("Failed to connected. Response Code: %d\n", reasonCode);
     setState(DISCONNECTED);
 }
 
-void PicoClient::onDisconnection(int reasonCode)
+void CppMqttClient::onDisconnection(ReasonCode reasonCode)
 {
-    LOGGER("Disconnected. Reason Code: %d\n", reasonCode);
-    char cause[] = "";
     dumpQueue();
-    disconnected(cause);
+    disconnected(reasonCode._to_string());
 }
 
-void PicoClient::onMessage(EncodedString &topic, Payload &payload)
+void CppMqttClient::onMessage(EncodedString &topic, Payload &payload)
 {
-    messageReceived(topic.data, topic.length, payload.getData(), payload.size());
+    string strTopic(topic.data, topic.length);
+    messageReceived(strTopic, payload.getData(), payload.size());
 }
 
-void PicoClient::onDeliveryComplete(Token token)
+void CppMqttClient::onDeliveryComplete(Token token)
 {
     PublishRequest *publishRequest = publishQueue.front();
     if (publishRequest->token == token)
@@ -307,7 +306,7 @@ void PicoClient::onDeliveryComplete(Token token)
 }
 
 // TODO: Handle based off reason code
-void PicoClient::onDeliveryFailure(Token token, __attribute__((unused)) int reasonCode)
+void CppMqttClient::onDeliveryFailure(Token token, __attribute__((unused)) int reasonCode)
 {
     if (publishQueue.empty())
     {
@@ -335,7 +334,7 @@ void PicoClient::onDeliveryFailure(Token token, __attribute__((unused)) int reas
 }
 
 // TODO: Handle based off reason codes
-void PicoClient::onSubscribeResult(Token token, __attribute__((unused)) vector<uint8_t> reasonCodes)
+void CppMqttClient::onSubscribeResult(Token token, __attribute__((unused)) vector<uint8_t> reasonCodes)
 {
     if (subscriptionToken == token)
     {
@@ -344,6 +343,6 @@ void PicoClient::onSubscribeResult(Token token, __attribute__((unused)) vector<u
 }
 
 // TODO: Implement
-void PicoClient::onUnsubscribeResult(__attribute__((unused)) Token token, __attribute__((unused)) vector<uint8_t> reasonCodes)
+void CppMqttClient::onUnsubscribeResult(__attribute__((unused)) Token token, __attribute__((unused)) vector<uint8_t> reasonCodes)
 {
 }

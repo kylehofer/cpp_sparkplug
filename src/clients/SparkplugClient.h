@@ -29,14 +29,14 @@
  * HISTORY:
  */
 
-#ifndef INCLUDE_CLIENTS_SPARKPLUGCLIENT
-#define INCLUDE_CLIENTS_SPARKPLUGCLIENT
+#ifndef SRC_CLIENTS_SPARKPLUGCLIENT
+#define SRC_CLIENTS_SPARKPLUGCLIENT
 
 #include <string>
 #include <tahu.h>
 #include "CommonTypes.h"
-#include "Publishable.h"
-#include "metrics/SimpleMetric.h"
+#include "../Publishable.h"
+#include <string>
 
 #define MAX_TOPIC_LENGTH 256
 #define MAX_BUFFER_LENGTH 512
@@ -53,13 +53,43 @@ enum EventType
     CLIENT_UNDELIVERED
 };
 
-typedef struct
+struct MessageEventStruct
 {
-    const char *topicName;
-    int topicLength;
-    void *payload;
-    int payloadLength;
-} MessageEventStruct;
+private:
+    void *raw = nullptr;
+
+    void *copyBuffer(const void *source, size_t length)
+    {
+        void *buffer;
+        buffer = malloc(length);
+        memcpy(buffer, source, length);
+        return buffer;
+    }
+
+public:
+    MessageEventStruct(std::string topic, void *payload, int payloadLength)
+        : topic(topic), payload(payload), payloadLength(payloadLength) {}
+
+    MessageEventStruct(MessageEventStruct &source) : raw(copyBuffer(source.payload, source.payloadLength)),
+                                                     topic(std::string(source.topic)),
+                                                     payload(raw),
+                                                     payloadLength(source.payloadLength)
+
+    {
+    }
+
+    ~MessageEventStruct()
+    {
+        if (raw)
+        {
+            free(raw);
+        }
+    }
+
+    const std::string topic;
+    const void *payload;
+    const int payloadLength;
+};
 
 class SparkplugClient;
 
@@ -94,10 +124,10 @@ typedef struct
  */
 typedef struct
 {
-    char *nodeCommandTopic;
-    char *nodeDeathTopic;
-    char *deviceCommandTopic;
-    char *primaryHostTopic;
+    std::string nodeCommandTopic;
+    std::string nodeDeathTopic;
+    std::string deviceCommandTopic;
+    std::string primaryHostTopic;
 } ClientTopicOptions;
 
 /**
@@ -225,7 +255,7 @@ protected:
      * @param token A unique token that will be attached to the message being sent. Used to identify when messages are delivered by asynchronous clients
      * @return 0 if the request was sent succesfully
      */
-    virtual int publishMessage(const char *topic, uint8_t *buffer, size_t length, DeliveryToken *token) = 0;
+    virtual int publishMessage(const std::string &topic, uint8_t *buffer, size_t length, DeliveryToken *token) = 0;
     /**
      * @brief Configures an MQTT Client that will be used for publishing and subscribing to an MQTT host.
      *
@@ -249,7 +279,7 @@ protected:
      *
      * @param cause The cause of the disconnection
      */
-    void disconnected(char *cause);
+    void disconnected(const char *cause);
     /**
      * @brief Updates the state of the SparkplugClient
      *
@@ -257,7 +287,7 @@ protected:
      */
     void delivered(PublishRequest *publishRequest);
     void undelivered(PublishRequest *publishRequest);
-    void messageReceived(const char *topicName, int topicLength, void *payload, int payloadLength);
+    void messageReceived(const std::string &topic, void *payload, int payloadLength);
     void setState(ClientState state);
     /**
      * @brief Sets the SparkplugClient as the Primary Client
@@ -363,4 +393,4 @@ public:
     virtual bool isConnected() = 0;
 };
 
-#endif /* INCLUDE_CLIENTS_SPARKPLUGCLIENT */
+#endif /* SRC_CLIENTS_SPARKPLUGCLIENT */

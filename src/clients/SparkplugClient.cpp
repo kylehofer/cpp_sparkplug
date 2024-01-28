@@ -29,7 +29,8 @@
  * HISTORY:
  */
 
-#include "clients/SparkplugClient.h"
+#include "SparkplugClient.h"
+#include "../metrics/simple/Int64Metric.h"
 #include <iostream>
 
 using namespace std;
@@ -132,11 +133,11 @@ size_t SparkplugClient::getWillPayload(uint8_t **buffer)
 {
     incrementBdSeq();
 
-    SimpleMetric bdSeqMetric = SimpleMetric("bdSeq", bdSeq, METRIC_DATA_TYPE_INT64);
+    auto bdSeqMetric = Int64Metric::create("bdSeq", bdSeq);
 
     org_eclipse_tahu_protobuf_Payload *payload = initializePayload(false);
 
-    bdSeqMetric.addToPayload(payload, true);
+    bdSeqMetric->addToPayload(payload, true);
 
     int length = encodePayload(payload, buffer);
 
@@ -159,8 +160,6 @@ int SparkplugClient::connect()
         LOGGER("Cannot connect client as it has not been configured\n");
         return -1;
     }
-
-    LOGGER("Attempting to connect the client\n");
 
     int returnCode;
 
@@ -227,20 +226,37 @@ org_eclipse_tahu_protobuf_Payload *SparkplugClient::initializePayload(bool hasSe
 
 size_t SparkplugClient::encodePayload(org_eclipse_tahu_protobuf_Payload *payload, uint8_t **buffer)
 {
-    size_t length = MAX_BUFFER_LENGTH;
-    *buffer = (uint8_t *)malloc(length * sizeof(uint8_t));
-    size_t message_length = encode_payload(*buffer, length, payload);
+    size_t message_length = encode_payload(nullptr, MAX_BUFFER_LENGTH, payload);
+    *buffer = (uint8_t *)malloc(message_length * sizeof(uint8_t));
+    encode_payload(*buffer, message_length, payload);
     return message_length;
 }
 
 void SparkplugClient::destroyRequest(PublishRequest *publishRequest)
 {
-    free(publishRequest->topic);
-    free(publishRequest);
+    delete publishRequest;
 }
 
 void SparkplugClient::setState(ClientState state)
 {
+    switch (state)
+    {
+    case CONNECTED:
+        break;
+    case CONNECTING:
+        /* code */
+        break;
+    case DISCONNECTING:
+        /* code */
+        break;
+    case DISCONNECTED:
+        setPrimary(false);
+        /* code */
+        break;
+
+    default:
+        break;
+    }
     this->state = state;
 }
 
@@ -264,18 +280,26 @@ int SparkplugClient::processRequest(PublishRequest *publishRequest)
 
     setState(PUBLISHING_PAYLOAD);
 
+    if (publishRequest->publisher->isNode() && publishRequest->isBirth)
+    {
+        resetSequence();
+    }
+
     org_eclipse_tahu_protobuf_Payload *payload = initializePayload();
 
     publishRequest->publisher->addToPayload(payload, publishRequest->isBirth);
 
     if (publishRequest->publisher->isNode() && publishRequest->isBirth)
     {
-        SimpleMetric bdSeqMetric = SimpleMetric("bdSeq", bdSeq, METRIC_DATA_TYPE_INT64);
-        bdSeqMetric.addToPayload(payload, true);
+        auto bdSeqMetric = Int64Metric::create("bdSeq", bdSeq);
+        bdSeqMetric->addToPayload(payload, true);
     }
 
     uint8_t *buffer;
-    int length = encodePayload(payload, &buffer);
+    size_t length = encodePayload(payload, &buffer);
+
+    free_payload(payload);
+    free(payload);
 
     int returnCode = -1;
 
@@ -289,8 +313,6 @@ int SparkplugClient::processRequest(PublishRequest *publishRequest)
     }
 
     free(buffer);
-    free_payload(payload);
-    free(payload);
 
     return returnCode;
 }
@@ -301,16 +323,14 @@ void SparkplugClient::activated()
     {
         return;
     }
-
     handler->onEvent(this, CLIENT_ACTIVE, nullptr);
 }
 
 void SparkplugClient::connected()
 {
     setState(CONNECTED);
-
     handler->onEvent(this, CLIENT_CONNECTED, nullptr);
-    if (topics->primaryHostTopic != NULL)
+    if (!topics->primaryHostTopic.empty())
     {
         subscribeToPrimaryHost();
     }
@@ -321,16 +341,15 @@ void SparkplugClient::incrementBdSeq()
     bdSeq = bdSeq == 255 ? 0 : bdSeq + 1;
 }
 
-void SparkplugClient::disconnected(char *cause)
+void SparkplugClient::disconnected(const char *cause)
 {
-    LOGGER("Disconnected. Reason: %s.", cause);
+    LOGGER("Disconnected. Reason: %s.\n", cause);
     setState(DISCONNECTED);
     handler->onEvent(this, CLIENT_DISCONNECTED, nullptr);
 }
 
 void SparkplugClient::delivered(PublishRequest *publishRequest)
 {
-    LOGGER("Publish Request was delivered for %s on topic: %s\n", publishRequest->publisher->getName(), publishRequest->topic);
     handler->onEvent(this, CLIENT_DELIVERED, publishRequest->publisher);
     SparkplugClient::destroyRequest(publishRequest);
 }
@@ -341,17 +360,18 @@ void SparkplugClient::undelivered(PublishRequest *publishRequest)
     SparkplugClient::destroyRequest(publishRequest);
 }
 
-void SparkplugClient::messageReceived(const char *topicName, int topicLength, void *payload, int payloadLength)
+void SparkplugClient::messageReceived(const string &topic, void *payload, int payloadLength)
 {
     MessageEventStruct messageEvent = {
-        topicName, topicLength, payload, payloadLength};
+        std::string(topic), payload, payloadLength};
     handler->onEvent(this, CLIENT_MESSAGE, &messageEvent);
 }
 
 void SparkplugClient::execute()
 {
-    if (connect() == 0)
+    if (state == DISCONNECTED)
     {
-        sync();
+        connect();
     }
+    sync();
 }

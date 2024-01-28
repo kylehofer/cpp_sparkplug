@@ -106,6 +106,8 @@ public:
      * @return false
      */
     bool hasData();
+
+    void clear();
     /**
      * @brief A blocking call that will wait for data to be receieved by the test client.
      *

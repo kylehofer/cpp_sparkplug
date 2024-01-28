@@ -81,6 +81,16 @@ TestClientUtility::~TestClientUtility()
     }
 }
 
+void TestClientUtility::clear()
+{
+    while (!messageQueue.empty())
+    {
+        PayloadMessage message = messageQueue.front();
+        messageQueue.pop();
+        TestClientUtility::freePayload(message);
+    }
+}
+
 void TestClientUtility::push(PayloadMessage message)
 {
     messageQueue.push(message);

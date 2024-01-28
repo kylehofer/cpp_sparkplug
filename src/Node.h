@@ -29,8 +29,8 @@
  * HISTORY:
  */
 
-#ifndef INCLUDE_NODE
-#define INCLUDE_NODE
+#ifndef SRC_NODE
+#define SRC_NODE
 
 #include "CommonTypes.h"
 #include "Publishable.h"
@@ -41,8 +41,8 @@
 #include <vector>
 #include <deque>
 #include <forward_list>
-#include "metrics/CallbackMetric.h"
 #include <mutex>
+#include "metrics/simple/BooleanMetric.h"
 
 using namespace std;
 
@@ -88,9 +88,9 @@ enum SparkplugClientMode
  */
 typedef struct
 {
-    const char *groupId;
-    const char *nodeId;
-    const char *primaryHost;
+    std::string groupId;
+    std::string nodeId;
+    std::string primaryHost;
     int publishPeriod;
     int enabledCommands;
 } NodeOptions;
@@ -111,8 +111,8 @@ typedef struct
 class Node : Publishable, ClientEventHandler, Publisher
 {
 private:
-    char *nodeBaseTopic;
-    char *deviceBaseTopic;
+    std::string groupBaseTopic;
+    std::string nodeId;
     ClientTopicOptions clientTopics;
     bool topicsConfigured = false;
     bool running = false;
@@ -126,10 +126,6 @@ private:
 #ifdef _GLIBCXX_HAS_GTHREADS
     mutex *queueMutex = new mutex();
 #endif
-
-    // Special Command Metrics
-    CallbackMetric *nodeBirthMetric = NULL;
-
     /**
      * @brief Publish a Birth message the node and all devices
      */
@@ -142,7 +138,7 @@ private:
      * @param nodeId The Sparkplug Node ID
      * @param primaryHost Optional Primary Host.
      */
-    void configureTopics(const char *groupId, const char *nodeId, const char *primaryHost);
+    void configureTopics(const std::string &groupId, const std::string &nodeId, const std::string &primaryHost);
     /**
      * @brief Prepares a publish request for a publishable and sends it to the active client
      *
@@ -210,7 +206,7 @@ private:
      * @param payloadLength The length of the payload
      * @return int
      */
-    int onMessage(SparkplugClient *client, const char *topicName, int topicLength, void *payload, int payloadLength);
+    int onMessage(SparkplugClient *client, const std::string &topic, const void *payload, const int payloadLength);
     /**
      * @brief Processes all events that were received and queued from onEvent.
      * This function is thread safe.
@@ -261,6 +257,10 @@ public:
      * @return int32_t the minimum time before any Publishable needs to Publish again.
      */
     int32_t execute(int32_t executeTime);
+    /**
+     * @brief Syncs all the clients on the node
+     *
+     */
     void sync();
     /**
      * @brief TODO: Implement. It should switch to the next client in the list.
@@ -309,6 +309,11 @@ public:
      */
     void onEvent(SparkplugClient *client, EventType eventType, void *data);
 
+    /**
+     * @brief Is a Node
+     *
+     * @return true
+     */
     virtual bool isNode() override;
 
     using Publishable::addMetric;
@@ -318,4 +323,4 @@ public:
     using Publishable::update;
 };
 
-#endif /* INCLUDE_NODE */
+#endif /* SRC_NODE */

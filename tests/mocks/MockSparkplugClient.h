@@ -1,8 +1,9 @@
-#ifndef TESTS_MOCKSPARKPLUGCLIENT
-#define TESTS_MOCKSPARKPLUGCLIENT
+#ifndef TESTS_MOCKS_MOCKSPARKPLUGCLIENT
+#define TESTS_MOCKS_MOCKSPARKPLUGCLIENT
 
 #include "gmock/gmock.h"
 #include "clients/SparkplugClient.h"
+#include <string>
 
 class MockSparkplugClient : public SparkplugClient
 {
@@ -20,7 +21,7 @@ public:
     MOCK_METHOD(int, subscribeToPrimaryHost, (), (override));
     MOCK_METHOD(int, subscribeToCommands, (), (override));
     MOCK_METHOD(int, unsubscribeToCommands, (), (override));
-    MOCK_METHOD(int, publishMessage, (const char *topic, uint8_t *buffer, size_t length, DeliveryToken *token), (override));
+    MOCK_METHOD(int, publishMessage, (const std::string &topic, uint8_t *buffer, size_t length, DeliveryToken *token), (override));
     MOCK_METHOD(int, configureClient, (ClientOptions * options), (override));
 
     void connect()
@@ -44,14 +45,14 @@ public:
         return SparkplugClient::processRequest(publishRequest);
     }
 
-    void sync()
+    virtual void sync() override
     {
     }
 
-    bool isConnected()
+    virtual bool isConnected() override
     {
         return connected;
     }
 };
 
-#endif /* TESTS_MOCKSPARKPLUGCLIENT */
+#endif /* TESTS_MOCKS_MOCKSPARKPLUGCLIENT */

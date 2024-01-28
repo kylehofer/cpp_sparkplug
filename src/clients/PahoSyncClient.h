@@ -88,7 +88,7 @@ protected:
      * @param token A unique token that will be attached to the message being sent. Used to identify when messages are delivered by asynchronous clients
      * @return 0 if the request was sent succesfully
      */
-    int publishMessage(const char *topic, uint8_t *buffer, size_t length, DeliveryToken *token);
+    virtual int publishMessage(const std::string &topic, uint8_t *buffer, size_t length, DeliveryToken *token) override;
     /**
      * @brief Configures an Asynchronous MQTT Client that will be used for publishing and subscribing to an MQTT host.
      *

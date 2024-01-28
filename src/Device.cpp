@@ -30,7 +30,6 @@
  */
 
 #include "Device.h"
-#include "metrics/CallbackMetric.h"
 
 #ifdef DEBUGGING
 #define LOGGER(format, ...) \

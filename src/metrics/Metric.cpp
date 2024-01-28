@@ -28,8 +28,12 @@
  *
  * HISTORY:
  */
-#include "metrics/Metric.h"
+
+#include <utility>
+
+#include "Metric.h"
 #include <iostream>
+#include "../properties/simple/BooleanProperty.h"
 
 Metric::~Metric()
 {
@@ -49,7 +53,25 @@ void Metric::addToPayload(org_eclipse_tahu_protobuf_Payload *payload, bool isBir
 {
     if (dirty || isBirth)
     {
-        if (add_simple_metric(payload, name, true, alias, dataType, false, false, data, size) < 0)
+        org_eclipse_tahu_protobuf_Payload_Metric metric;
+        if (init_metric(&metric, name, true, alias, dataType, false, false, data, size) != 0)
+        {
+        }
+
+        if (properties.size() > 0)
+        {
+            org_eclipse_tahu_protobuf_Payload_PropertySet propertySet;
+            memset(&propertySet, 0, sizeof(propertySet));
+
+            for (auto &property : properties)
+            {
+                property->addToPropertySet(&propertySet, isBirth);
+            }
+
+            add_propertyset_to_metric(&metric, &propertySet);
+        }
+
+        if (add_metric_to_payload(payload, &metric) < 0)
         {
             // TODO: failure
         }
@@ -69,6 +91,14 @@ bool Metric::isDirty()
 void Metric::published()
 {
     dirty = false;
+    if (properties.size() > 0)
+    {
+
+        for (auto &property : properties)
+        {
+            property->published();
+        }
+    }
 }
 
 void *Metric::getData()
@@ -80,3 +110,43 @@ const char *Metric::getName()
 {
     return name;
 }
+
+void Metric::addProperty(const std::shared_ptr<Property> &property)
+{
+    properties.push_back(std::move(property));
+}
+
+void Metric::setCommandHandler(CommandHandler *handler)
+{
+    if (isReadOnly)
+    {
+        isReadOnly = false;
+        addProperty(BooleanProperty::create("writable", true));
+    }
+    // Add read only property
+    this->handler = handler;
+}
+
+void Metric::setCommandCallback(std::function<void(Metric *metric, org_eclipse_tahu_protobuf_Payload_Metric *payload)> callback)
+{
+    if (isReadOnly)
+    {
+        isReadOnly = false;
+        addProperty(BooleanProperty::create("writable", true));
+    }
+    // Add read only property
+    this->callback = callback;
+}
+
+void Metric::onCommand(org_eclipse_tahu_protobuf_Payload_Metric *metric)
+{
+    if (handler != nullptr)
+    {
+        handler->onMetricCommand(this, metric);
+    }
+
+    if (callback)
+    {
+        callback(this, metric);
+    }
+};

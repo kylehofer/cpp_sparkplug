@@ -9,3 +9,4 @@ external/
 _deps/
 .*
 CMakeFiles
+external/

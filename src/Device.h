@@ -33,7 +33,6 @@
 #define INCLUDE_DEVICE
 
 #include "Publishable.h"
-#include "metrics/CallbackMetric.h"
 
 #define DEVICE_CONTROL_NONE 0
 #define DEVICE_CONTROL_REBIRTH 0b1
@@ -75,12 +74,19 @@ public:
      */
     void setPublisher(Publisher *publisher);
 
+    /**
+     * @brief Device is not a Node
+     *
+     * @return false
+     */
     virtual bool isNode() override;
 
     using Publishable::addMetric;
     using Publishable::addToPayload;
     using Publishable::canPublish;
     using Publishable::getName;
+    using Publishable::published;
+    using Publishable::publishing;
     using Publishable::update;
 };
 

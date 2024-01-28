@@ -29,14 +29,15 @@
  * HISTORY:
  */
 
-#ifndef INCLUDE_PUBLISHABLE
-#define INCLUDE_PUBLISHABLE
+#ifndef SRC_PUBLISHABLE
+#define SRC_PUBLISHABLE
 
 #include "metrics/Metric.h"
 #include "CommonTypes.h"
 #include "Publisher.h"
 #include <tahu.h>
 #include <forward_list>
+#include <memory>
 
 using namespace std;
 
@@ -66,7 +67,7 @@ private:
     int32_t nextPublish;
     PublishableState state = IDLE;
 
-    forward_list<Metric *> metrics;
+    forward_list<std::shared_ptr<Metric>> metrics;
 
     /**
      * @brief Get the State
@@ -81,6 +82,11 @@ private:
     void setState(PublishableState);
 
 protected:
+    /**
+     * @brief Set the Publish Period
+     *
+     * @param publishPeriod
+     */
     void setPublishPeriod(int32_t publishPeriod);
 
 public:
@@ -102,7 +108,7 @@ public:
      * @param metrics An array of Metrics that will be handled by this Publishable
      * @param metricCount The number of Metrics being added
      */
-    void addMetric(Metric *metric);
+    void addMetric(const std::shared_ptr<Metric> &metric);
     /**
      * @brief Used to update the publishing timer for the Publishable. The amount of time supplied will be deducted from the remaining time before
      * the next publish. If more time has passed than the publish period then the Publishable will be marked as able to publish. The value returned
@@ -147,7 +153,7 @@ public:
      * @param publisher The publisher that the command was received from
      * @param message The message received
      */
-    void handleCommand(Publisher *publisher, void *payload, int payloadLength);
+    void handleCommand(Publisher *publisher, const void *payload, const int payloadLength);
 
     /**
      * @brief Returns whether the Publishable instance is a Node.
@@ -158,4 +164,4 @@ public:
     virtual bool isNode() = 0;
 };
 
-#endif /* INCLUDE_PUBLISHABLE */
+#endif /* SRC_PUBLISHABLE */

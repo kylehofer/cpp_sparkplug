@@ -166,13 +166,11 @@ bool PortForwarder::portCheck(int port, int maxRetries)
 
 void PortForwarder::closeSocket(int socket)
 {
-    char buffer[FORWARDER_BUFFER_SIZE];
-
+    // char buffer[FORWARDER_BUFFER_SIZE];
     // Assuring socket is empty before closing
-    while (read(socket, buffer, FORWARDER_BUFFER_SIZE) > 0)
-    {
-    }
-
+    // while (read(socket, buffer, FORWARDER_BUFFER_SIZE) > 0)
+    // {
+    // }
     close(socket);
 }
 

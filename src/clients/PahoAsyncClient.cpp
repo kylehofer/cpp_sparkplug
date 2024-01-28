@@ -166,7 +166,7 @@ int PahoAsyncClient::subscribeToPrimaryHost()
     subscribeOptions.onSuccess = onSubscribeSuccess;
     subscribeOptions.onFailure = onSubscribeFailure;
 
-    returnCode = MQTTAsync_subscribe(client, topics->primaryHostTopic, QOS, &subscribeOptions);
+    returnCode = MQTTAsync_subscribe(client, topics->primaryHostTopic.c_str(), QOS, &subscribeOptions);
 
     if (returnCode != MQTTASYNC_SUCCESS)
     {
@@ -188,7 +188,7 @@ int PahoAsyncClient::subscribeToCommands()
     subscribeOptions.onSuccess = onCommandSubscribeSuccess;
     subscribeOptions.onFailure = onCommandSubscribeFailure;
 
-    char *const commandTopics[2] = {topics->nodeCommandTopic, topics->deviceCommandTopic};
+    char *const commandTopics[2] = {(char *)topics->nodeCommandTopic.c_str(), (char *)topics->deviceCommandTopic.c_str()};
     int qos[] = {QOS, QOS};
 
     returnCode = MQTTAsync_subscribeMany(client, 2, commandTopics, qos, &subscribeOptions);
@@ -208,7 +208,7 @@ int PahoAsyncClient::unsubscribeToCommands()
 {
     int returnCode;
 
-    char *const commandTopics[2] = {topics->nodeCommandTopic, topics->deviceCommandTopic};
+    char *const commandTopics[2] = {(char *)topics->nodeCommandTopic.c_str(), (char *)topics->deviceCommandTopic.c_str()};
 
     returnCode = MQTTAsync_unsubscribeMany(client, 2, commandTopics, NULL);
 
@@ -223,14 +223,14 @@ int PahoAsyncClient::unsubscribeToCommands()
     return 0;
 }
 
-int PahoAsyncClient::publishMessage(const char *topic, uint8_t *buffer, size_t length, DeliveryToken *token)
+int PahoAsyncClient::publishMessage(const std::string &topic, uint8_t *buffer, size_t length, DeliveryToken *token)
 {
     MQTTAsync_responseOptions responseOptions = MQTTAsync_responseOptions_initializer;
 
     responseOptions.onFailure = deliveryFailure;
     responseOptions.context = this;
 
-    int returnCode = MQTTAsync_send(client, topic, length, buffer, QOS, 0, &responseOptions);
+    int returnCode = MQTTAsync_send(client, topic.c_str(), length, buffer, QOS, 0, &responseOptions);
 
     if (returnCode == MQTTASYNC_SUCCESS)
     {
@@ -247,7 +247,7 @@ int PahoAsyncClient::configureClient(ClientOptions *options)
     int returnCode;
 
     returnCode = MQTTAsync_create(
-        &client, options->address, options->clientId,
+        &client, options->address.getAddress().c_str(), options->clientId,
         MQTTCLIENT_PERSISTENCE_NONE, NULL);
 
     if (returnCode != MQTTASYNC_SUCCESS)
@@ -288,7 +288,7 @@ int PahoAsyncClient::configureClient(ClientOptions *options)
 
     will.qos = 0;
     will.retained = 0;
-    will.topicName = topics->nodeDeathTopic;
+    will.topicName = topics->nodeDeathTopic.c_str();
     will.message = NULL;
 
     connectionOptions.will = &will;
@@ -304,7 +304,11 @@ PahoAsyncClient::~PahoAsyncClient()
 
 int PahoAsyncClient::onMessage(char *topicName, int topicLength, MQTTAsync_message *message)
 {
-    messageReceived(topicName, topicLength, message->payload, message->payloadlen);
+    {
+        std::string stringTopic(topicName, topicLength);
+        messageReceived(stringTopic, message->payload, message->payloadlen);
+    }
+
     MQTTAsync_freeMessage(&message);
     return 1;
 }

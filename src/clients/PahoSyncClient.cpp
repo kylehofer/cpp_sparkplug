@@ -29,7 +29,7 @@
  * HISTORY:
  */
 
-#include "clients/PahoSyncClient.h"
+#include "PahoSyncClient.h"
 #include <iostream>
 
 #define QOS 1
@@ -79,7 +79,7 @@ int PahoSyncClient::subscribeToPrimaryHost()
 {
     int returnCode;
 
-    returnCode = MQTTClient_subscribe(client, topics->primaryHostTopic, QOS);
+    returnCode = MQTTClient_subscribe(client, topics->primaryHostTopic.c_str(), QOS);
 
     if (returnCode != MQTTCLIENT_SUCCESS)
     {
@@ -96,7 +96,7 @@ int PahoSyncClient::subscribeToCommands()
 {
     int returnCode;
 
-    char *const commandTopics[2] = {topics->nodeCommandTopic, topics->deviceCommandTopic};
+    char *const commandTopics[2] = {(char *)topics->nodeCommandTopic.c_str(), (char *)topics->deviceCommandTopic.c_str()};
     int qos[] = {QOS, QOS};
 
     returnCode = MQTTClient_subscribeMany(client, 2, commandTopics, qos);
@@ -118,7 +118,7 @@ int PahoSyncClient::unsubscribeToCommands()
 {
     int returnCode;
 
-    char *const commandTopics[2] = {topics->nodeCommandTopic, topics->deviceCommandTopic};
+    char *const commandTopics[2] = {(char *)topics->nodeCommandTopic.c_str(), (char *)topics->deviceCommandTopic.c_str()};
 
     returnCode = MQTTClient_unsubscribeMany(client, 2, commandTopics);
 
@@ -133,9 +133,9 @@ int PahoSyncClient::unsubscribeToCommands()
     return 0;
 }
 
-int PahoSyncClient::publishMessage(const char *topic, uint8_t *buffer, size_t length, DeliveryToken *token)
+int PahoSyncClient::publishMessage(const std::string &topic, uint8_t *buffer, size_t length, DeliveryToken *token)
 {
-    int returnCode = MQTTClient_publish(client, topic, length, buffer, QOS, 0, token);
+    int returnCode = MQTTClient_publish(client, topic.c_str(), length, buffer, QOS, 0, token);
 
     if (returnCode == MQTTCLIENT_SUCCESS)
     {
@@ -151,7 +151,7 @@ int PahoSyncClient::configureClient(ClientOptions *options)
     int returnCode;
 
     returnCode = MQTTClient_create(
-        &client, options->address, options->clientId,
+        &client, options->address.getAddress().c_str(), options->clientId,
         MQTTCLIENT_PERSISTENCE_NONE, NULL);
 
     if (returnCode != MQTTCLIENT_SUCCESS)
@@ -172,7 +172,7 @@ int PahoSyncClient::configureClient(ClientOptions *options)
 
     will.qos = 0;
     will.retained = 0;
-    will.topicName = topics->nodeDeathTopic;
+    will.topicName = topics->nodeDeathTopic.c_str();
     will.message = NULL;
 
     connectionOptions.will = &will;
@@ -236,8 +236,12 @@ void PahoSyncClient::sync()
         {
             if (message != NULL)
             {
-                messageReceived(topic, topicLength, message->payload, message->payloadlen);
-                MQTTClient_freeMessage(&message);
+                {
+                    std::string stringTopic(topic, topicLength);
+                    messageReceived(stringTopic, message->payload, message->payloadlen);
+                    MQTTClient_freeMessage(&message);
+                }
+
                 free(topic);
             }
             else

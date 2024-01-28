@@ -29,8 +29,8 @@
  * HISTORY:
  */
 
-#ifndef INCLUDE_COMMONTYPES
-#define INCLUDE_COMMONTYPES
+#ifndef SRC_COMMONTYPES
+#define SRC_COMMONTYPES
 
 #include <string>
 
@@ -41,15 +41,28 @@ typedef int DeliveryToken;
 /**
  * @brief Struct for handling the data required for publishing requests.
  */
-typedef struct
+struct PublishRequest
 {
+    PublishRequest(bool isBirth,
+                   Publishable *publisher,
+                   std::string topic,
+                   DeliveryToken token,
+                   int retryCount) : isBirth(isBirth),
+                                     publisher(publisher),
+                                     topic(topic),
+                                     token(token),
+                                     retryCount(retryCount){};
     bool isBirth;
     Publishable *publisher;
-    char *topic;
+    std::string topic;
     DeliveryToken token;
     int retryCount;
-} PublishRequest;
+};
 
+/**
+ * @brief Struct for handling URIs
+ *
+ */
 class Uri
 {
 private:
@@ -57,9 +70,13 @@ private:
     std::string address;
     int port = -1;
 
+    /**
+     * @brief Initializes a URI from a string
+     *
+     * @param uri
+     */
     void init(std::string uri)
     {
-        // tcp://192.168.40.250:1884
         const std::string protocolIdentifier("://"), portSeparator(":");
 
         std::size_t addressStart, portStart;
@@ -94,36 +111,73 @@ private:
 
 protected:
 public:
+    /**
+     * @brief Construct a new Uri object from a protocol, address, and port
+     *
+     * @param protocol
+     * @param address
+     * @param port
+     */
     Uri(std::string protocol, std::string address, int port) : protocol(protocol), address(address), port(port)
     {
     }
 
+    /**
+     * @brief Construct a new Uri object from a string
+     *
+     * @param uri
+     */
     Uri(std::string uri)
     {
         init(uri);
     }
 
+    /**
+     * @brief Construct a new Uri object from a character string
+     *
+     * @param uri
+     */
     Uri(const char *uri)
     {
         std::string input(uri);
         init(input);
     }
 
+    /**
+     * @brief Get the Protocol of the uri
+     *
+     * @return const std::string&
+     */
     const std::string &getProtocol()
     {
         return protocol;
     }
 
+    /**
+     * @brief Get the Address of the uri
+     *
+     * @return const std::string&
+     */
     const std::string &getAddress()
     {
         return address;
     }
 
+    /**
+     * @brief Get the Port of the uri
+     *
+     * @return const int&
+     */
     const int &getPort()
     {
         return port;
     }
 
+    /**
+     * @brief Returns the string representation of the URI
+     *
+     * @return const std::string
+     */
     const std::string toString()
     {
         if (port > 0)
@@ -134,4 +188,4 @@ public:
     }
 };
 
-#endif /* INCLUDE_COMMONTYPES */
+#endif /* SRC_COMMONTYPES */
