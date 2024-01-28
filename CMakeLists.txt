@@ -16,6 +16,7 @@ IF(${BUILD_TARGET} STREQUAL "PICO")
     option(CPP_SPARKPLUG_PAHO "" OFF)
 ELSE()
     option(CPP_SPARKPLUG_PAHO "" ON)
+    option(SPARKPLUG_ENABLE_TESTING "" ON)
 ENDIF()
 
 project(cpp_sparkplug C CXX ASM)

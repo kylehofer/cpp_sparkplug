@@ -246,6 +246,10 @@ int CppMqttClient::configureClient(ClientOptions *options)
 
 CppMqttClient::~CppMqttClient()
 {
+    if (will)
+    {
+        delete will;
+    }
 }
 
 void CppMqttClient::sync()
