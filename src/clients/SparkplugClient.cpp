@@ -29,12 +29,19 @@
  * HISTORY:
  */
 
-#include "clients/SparkplugClient.h"
+#include "SparkplugClient.h"
+#include "../metrics/simple/Int64Metric.h"
 #include <iostream>
 
 using namespace std;
 
-#define SPARKPLUGCLIENT_LOGGER cout << "Sparkplug Client: "
+#ifdef DEBUGGING
+#define LOGGER(format, ...)       \
+    printf("Sparkplug Client: "); \
+    printf(format, ##__VA_ARGS__)
+#else
+#define LOGGER(out, ...)
+#endif
 
 SparkplugClient::SparkplugClient()
 {
@@ -54,7 +61,7 @@ int SparkplugClient::configure(ClientTopicOptions *topics)
 
     if (topics == NULL)
     {
-        SPARKPLUGCLIENT_LOGGER "Error: Client topics are not defined.\n";
+        LOGGER("Error: Client topics are not defined.\n");
         return -1;
     }
 
@@ -64,7 +71,7 @@ int SparkplugClient::configure(ClientTopicOptions *topics)
 
     if (returnCode < 0)
     {
-        SPARKPLUGCLIENT_LOGGER "Error configuring client\n";
+        LOGGER("Error configuring client\n");
         return returnCode;
     }
 
@@ -122,6 +129,24 @@ int SparkplugClient::deactivate()
     return 0;
 }
 
+size_t SparkplugClient::getWillPayload(uint8_t **buffer)
+{
+    incrementBdSeq();
+
+    auto bdSeqMetric = Int64Metric::create("bdSeq", bdSeq);
+
+    org_eclipse_tahu_protobuf_Payload *payload = initializePayload(false);
+
+    bdSeqMetric->addToPayload(payload, true);
+
+    int length = encodePayload(payload, buffer);
+
+    free_payload(payload);
+    free(payload);
+
+    return length;
+}
+
 int SparkplugClient::connect()
 {
     if (getState() != DISCONNECTED)
@@ -132,7 +157,7 @@ int SparkplugClient::connect()
 
     if (!configured)
     {
-        SPARKPLUGCLIENT_LOGGER << "Cannot connect client as it has not been configured\n";
+        LOGGER("Cannot connect client as it has not been configured\n");
         return -1;
     }
 
@@ -146,6 +171,8 @@ int SparkplugClient::connect()
         // TODO: Connect Failure
         return returnCode;
     }
+
+    setState(CONNECTING);
     return 0;
 }
 
@@ -165,7 +192,7 @@ int SparkplugClient::disconnect()
     {
         // TODO: Disconnect Failure
         // return returnCode;
-        SPARKPLUGCLIENT_LOGGER "Failed to disconnect, possibly already disconnected\n";
+        LOGGER("Failed to disconnect, possibly already disconnected\n");
     }
     return 0;
 }
@@ -175,22 +202,61 @@ ClientState SparkplugClient::getState()
     return state;
 }
 
-int SparkplugClient::encodePayload(org_eclipse_tahu_protobuf_Payload *payload, uint8_t **buffer)
+void SparkplugClient::resetSequence()
 {
-    size_t length = MAX_BUFFER_LENGTH;
-    *buffer = (uint8_t *)malloc(length * sizeof(uint8_t));
-    size_t message_length = encode_payload(*buffer, length, payload);
+    payloadSequence = 0;
+}
+
+org_eclipse_tahu_protobuf_Payload *SparkplugClient::initializePayload(bool hasSeq)
+{
+    org_eclipse_tahu_protobuf_Payload *payload = (org_eclipse_tahu_protobuf_Payload *)malloc(sizeof(org_eclipse_tahu_protobuf_Payload));
+
+    // Initialize payload
+    memset(payload, 0, sizeof(org_eclipse_tahu_protobuf_Payload));
+    payload->has_timestamp = true;
+    payload->timestamp = get_current_timestamp();
+    if (hasSeq)
+    {
+        LOGGER("Current Sequence Number: %u\n", payloadSequence);
+        payload->seq = payloadSequence++;
+        payload->has_seq = true;
+    }
+    return payload;
+}
+
+size_t SparkplugClient::encodePayload(org_eclipse_tahu_protobuf_Payload *payload, uint8_t **buffer)
+{
+    size_t message_length = encode_payload(nullptr, MAX_BUFFER_LENGTH, payload);
+    *buffer = (uint8_t *)malloc(message_length * sizeof(uint8_t));
+    encode_payload(*buffer, message_length, payload);
     return message_length;
 }
 
 void SparkplugClient::destroyRequest(PublishRequest *publishRequest)
 {
-    free(publishRequest->topic);
-    free(publishRequest);
+    delete publishRequest;
 }
 
 void SparkplugClient::setState(ClientState state)
 {
+    switch (state)
+    {
+    case CONNECTED:
+        break;
+    case CONNECTING:
+        /* code */
+        break;
+    case DISCONNECTING:
+        /* code */
+        break;
+    case DISCONNECTED:
+        setPrimary(false);
+        /* code */
+        break;
+
+    default:
+        break;
+    }
     this->state = state;
 }
 
@@ -208,16 +274,32 @@ int SparkplugClient::processRequest(PublishRequest *publishRequest)
 {
     if (getState() == DISCONNECTED)
     {
-        SPARKPLUGCLIENT_LOGGER "Cannot publish payloads while disconnected\n";
+        LOGGER("Cannot publish payloads while disconnected\n");
         return -1;
     }
 
     setState(PUBLISHING_PAYLOAD);
 
-    org_eclipse_tahu_protobuf_Payload *payload = publishRequest->publisher->getPayload(publishRequest->isBirth);
+    if (publishRequest->publisher->isNode() && publishRequest->isBirth)
+    {
+        resetSequence();
+    }
+
+    org_eclipse_tahu_protobuf_Payload *payload = initializePayload();
+
+    publishRequest->publisher->addToPayload(payload, publishRequest->isBirth);
+
+    if (publishRequest->publisher->isNode() && publishRequest->isBirth)
+    {
+        auto bdSeqMetric = Int64Metric::create("bdSeq", bdSeq);
+        bdSeqMetric->addToPayload(payload, true);
+    }
 
     uint8_t *buffer;
-    int length = encodePayload(payload, &buffer);
+    size_t length = encodePayload(payload, &buffer);
+
+    free_payload(payload);
+    free(payload);
 
     int returnCode = -1;
 
@@ -231,8 +313,6 @@ int SparkplugClient::processRequest(PublishRequest *publishRequest)
     }
 
     free(buffer);
-    free_payload(payload);
-    free(payload);
 
     return returnCode;
 }
@@ -250,14 +330,20 @@ void SparkplugClient::connected()
 {
     setState(CONNECTED);
     handler->onEvent(this, CLIENT_CONNECTED, nullptr);
-    if (topics->primaryHostTopic != NULL)
+    if (!topics->primaryHostTopic.empty())
     {
         subscribeToPrimaryHost();
     }
 }
 
-void SparkplugClient::disconnected(char *cause)
+void SparkplugClient::incrementBdSeq()
 {
+    bdSeq = bdSeq == 255 ? 0 : bdSeq + 1;
+}
+
+void SparkplugClient::disconnected(const char *cause)
+{
+    LOGGER("Disconnected. Reason: %s.\n", cause);
     setState(DISCONNECTED);
     handler->onEvent(this, CLIENT_DISCONNECTED, nullptr);
 }
@@ -274,17 +360,18 @@ void SparkplugClient::undelivered(PublishRequest *publishRequest)
     SparkplugClient::destroyRequest(publishRequest);
 }
 
-void SparkplugClient::messageReceived(const char *topicName, int topicLength, void *payload, int payloadLength)
+void SparkplugClient::messageReceived(const string &topic, void *payload, int payloadLength)
 {
     MessageEventStruct messageEvent = {
-        topicName, topicLength, payload, payloadLength};
+        std::string(topic), payload, payloadLength};
     handler->onEvent(this, CLIENT_MESSAGE, &messageEvent);
 }
 
 void SparkplugClient::execute()
 {
-    if (connect() == 0)
+    if (state == DISCONNECTED)
     {
-        sync();
+        connect();
     }
+    sync();
 }

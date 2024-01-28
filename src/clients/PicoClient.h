@@ -1,12 +1,12 @@
 /*
- * File: CommonTypes.h
+ * File: PicoClient.h
  * Project: cpp_sparkplug
- * Created Date: Thursday December 1st 2022
+ * Created Date: Monday June 12th 2023
  * Author: Kyle Hofer
  *
  * MIT License
  *
- * Copyright (c) 2022 Kyle Hofer
+ * Copyright (c) 2024 Kyle Hofer
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -29,23 +29,38 @@
  * HISTORY:
  */
 
-#ifndef INCLUDE_COMMONTYPES
-#define INCLUDE_COMMONTYPES
+#ifndef SRC_CLIENTS_PICOCLIENT
+#define SRC_CLIENTS_PICOCLIENT
 
-class Publishable;
+#include "CppMqttClient.h"
+#include "PicoTcpClient.h"
 
-typedef int DeliveryToken;
-
-/**
- * @brief Struct for handling the data required for publishing requests.
- */
-typedef struct
+class PicoClient : public CppMqttClient
 {
-    bool isBirth;
-    Publishable *publisher;
-    char *topic;
-    DeliveryToken token;
-    int retryCount;
-} PublishRequest;
+private:
+    PicoTcpClient tcpClient;
 
-#endif /* INCLUDE_COMMONTYPES */
+protected:
+    /**
+     * @brief Get the Client object
+     *
+     * @return Client*
+     */
+    virtual Client *getClient() override
+    {
+        return (Client *)&tcpClient;
+    };
+
+public:
+    /**
+     * @brief Construct a new Pico MQTT Client
+     *
+     * @param handler The Event Handler that manages the callbacks from the Client
+     * @param options The options for configuring the MQTT Client
+     */
+    PicoClient(ClientEventHandler *handler, ClientOptions *options) : CppMqttClient(handler, options)
+    {
+    }
+};
+
+#endif /* SRC_CLIENTS_PICOCLIENT */

@@ -29,10 +29,26 @@
  * HISTORY:
  */
 
-#ifndef INCLUDE_METRICS_METRIC
-#define INCLUDE_METRICS_METRIC
+#ifndef SRC_METRICS_METRIC
+#define SRC_METRICS_METRIC
 
 #include <tahu.h>
+#include <vector>
+#include <functional>
+#include <memory>
+#include "../properties/Property.h"
+
+class Metric;
+
+/**
+ * @brief Class for handling when a Metric has recieved a command.
+ *
+ */
+class CommandHandler
+{
+public:
+    virtual void onMetricCommand(Metric *metric, org_eclipse_tahu_protobuf_Payload_Metric *payload) = 0;
+};
 
 /**
  * @brief
@@ -42,12 +58,19 @@ class Metric
 {
 private:
     char *name = NULL;
-    void *data = NULL;
+
     uint64_t alias = 0;
     uint8_t dataType;
     size_t size;
     bool dirty = false;
-    org_eclipse_tahu_protobuf_Payload_PropertySet *properties = NULL;
+
+    CommandHandler *handler = NULL;
+    std::function<void(Metric *, org_eclipse_tahu_protobuf_Payload_Metric *)> callback;
+    bool isReadOnly = true;
+
+protected:
+    std::vector<std::shared_ptr<Property>> properties;
+    void *data = NULL;
 
 public:
     /**
@@ -64,16 +87,6 @@ public:
      * @param dataType Sparkplug Datatype
      */
     Metric(const char *name, void *data, size_t size, uint8_t dataType);
-    /**
-     * @brief Construct a new Sparkplug Metric
-     *
-     * @tparam T The data type that will be used to construct the data. Does not work with pointers.
-     * @param name The name of the Sparkplug Metric
-     * @param data The piece of data that will be as the first value of the metric
-     * @param dataType Sparkplug Datatype
-     */
-    template <typename T>
-    Metric(const char *name, T data, uint8_t dataType) : Metric(name, &data, sizeof(T), dataType){};
     virtual ~Metric();
     /**
      * @brief Adds the metric to a protobuf payload
@@ -118,7 +131,25 @@ public:
      *
      * @param metric
      */
-    virtual void onCommand(org_eclipse_tahu_protobuf_Payload_Metric *metric) = 0;
+    void onCommand(org_eclipse_tahu_protobuf_Payload_Metric *metric);
+
+    void addProperty(const std::shared_ptr<Property> &property);
+
+    /**
+     * @brief Sets the command handler for the metric.
+     * This handler have onMetricCommand called when a command is received for this metric.
+     *
+     * @param handler
+     */
+    void setCommandHandler(CommandHandler *handler);
+
+    /**
+     * @brief Set the command callback for this metric.
+     * This callback will be executed when a command is received for this metric.
+     *
+     * @param callback
+     */
+    void setCommandCallback(std::function<void(Metric *metric, org_eclipse_tahu_protobuf_Payload_Metric *payload)> callback);
 };
 
-#endif /* INCLUDE_METRICS_METRIC */
+#endif /* SRC_METRICS_METRIC */

@@ -33,17 +33,36 @@
 #include <algorithm>
 #include <cstdio>
 
+#ifdef DEBUGGING
+#define LOGGER(format, ...)  \
+    printf("Publishable: "); \
+    printf(format, ##__VA_ARGS__)
+#else
+#define LOGGER(out, ...)
+#endif
+
 using namespace std;
 
 Publishable::~Publishable()
 {
+    if (this->name != NULL)
+    {
+        free(this->name);
+    }
 }
 
 Publishable::Publishable() : Publishable(NULL, 30) {}
 
-Publishable::Publishable(const char *name, int publishPeriod) : name(name), publishPeriod(publishPeriod), nextPublish(publishPeriod) {}
+Publishable::Publishable(const char *name, int publishPeriod) : publishPeriod(publishPeriod), nextPublish(publishPeriod)
+{
 
-void Publishable::addMetric(Metric *metric)
+    if (name != NULL)
+    {
+        this->name = strdup(name);
+    }
+}
+
+void Publishable::addMetric(const std::shared_ptr<Metric> &metric)
 {
     metrics.push_front(metric);
 }
@@ -86,7 +105,7 @@ void Publishable::setState(PublishableState state)
 void Publishable::published()
 {
     setState(IDLE);
-    std::for_each(metrics.begin(), metrics.end(), [](Metric *metric)
+    std::for_each(metrics.begin(), metrics.end(), [](std::shared_ptr<Metric> &metric)
                   { metric->published(); });
 }
 
@@ -95,21 +114,11 @@ void Publishable::publishing()
     setState(PUBLISHING);
 }
 
-org_eclipse_tahu_protobuf_Payload *Publishable::initializePayload(bool isBirth)
+void Publishable::addToPayload(org_eclipse_tahu_protobuf_Payload *payload, bool isBirth)
 {
-    org_eclipse_tahu_protobuf_Payload *payload = (org_eclipse_tahu_protobuf_Payload *)malloc(sizeof(org_eclipse_tahu_protobuf_Payload));
-    get_next_payload(payload);
-    return payload;
-}
-
-org_eclipse_tahu_protobuf_Payload *Publishable::getPayload(bool isBirth)
-{
-    org_eclipse_tahu_protobuf_Payload *payload = initializePayload(isBirth);
-
     nextPublish = publishPeriod;
-    for_each(metrics.begin(), metrics.end(), [payload, isBirth](Metric *metric)
+    for_each(metrics.begin(), metrics.end(), [payload, isBirth](std::shared_ptr<Metric> &metric)
              { metric->addToPayload(payload, isBirth); });
-    return payload;
 }
 
 bool Publishable::canPublish()
@@ -118,7 +127,7 @@ bool Publishable::canPublish()
     {
         return false;
     }
-    return any_of(metrics.begin(), metrics.end(), [](Metric *metric)
+    return any_of(metrics.begin(), metrics.end(), [](std::shared_ptr<Metric> &metric)
                   { return metric->isDirty(); });
 }
 
@@ -127,10 +136,10 @@ const char *Publishable::getName()
     return name;
 }
 
-void Publishable::handleCommand(Publisher *publisher, void *payload, int payloadLength)
+void Publishable::handleCommand(__attribute__((unused)) Publisher *publisher, const void *payload, const int payloadLength)
 {
     // Decode the payload
-    org_eclipse_tahu_protobuf_Payload sparkplugPayload = org_eclipse_tahu_protobuf_Payload_init_zero;
+    org_eclipse_tahu_protobuf_Payload sparkplugPayload;
     if (decode_payload(&sparkplugPayload, (uint8_t *)payload, payloadLength) < 0)
     {
         free_payload(&sparkplugPayload);
@@ -141,14 +150,14 @@ void Publishable::handleCommand(Publisher *publisher, void *payload, int payload
     {
         org_eclipse_tahu_protobuf_Payload_Metric metricPayload = sparkplugPayload.metrics[i];
         char *name = metricPayload.name;
-        forward_list<Metric *>::iterator result;
+        forward_list<std::shared_ptr<Metric>>::iterator result;
 
-        result = find_if(metrics.begin(), metrics.end(), [name](Metric *metric)
+        result = find_if(metrics.begin(), metrics.end(), [name](std::shared_ptr<Metric> &metric)
                          { return (strcmp(metric->getName(), name) == 0); });
 
         if (result != metrics.end())
         {
-            Metric *metric;
+            std::shared_ptr<Metric> metric;
             metric = *result;
             // Handle Device Command
             metric->onCommand(&metricPayload);

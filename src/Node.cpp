@@ -35,8 +35,8 @@
 #include <chrono>
 #include <thread>
 #include <iostream>
+#include <string.h>
 
-#include "metrics/CallbackMetric.h"
 #include "CommonTypes.h"
 
 #define NDATA "NDATA"
@@ -46,6 +46,8 @@
 
 #define DDATA "DDATA"
 #define DBIRTH "DBIRTH"
+#define DDATA_APPEND "DDATA/"
+#define DBIRTH_APPEND "DBIRTH/"
 #define DCMD "DCMD"
 #define DDEATH "DDEATH"
 
@@ -63,6 +65,16 @@ using namespace std;
 #define NODE_CONTROL_REBOOT_NAME "Node Control/Reboot"
 #define NODE_CONTROL_NEXT_SERVER_NAME "Node Control/Next Server"
 
+#ifdef DEBUGGING
+#define LOGGER(format, ...) \
+    printf("Node: ");       \
+    printf(format, ##__VA_ARGS__)
+#else
+#define LOGGER(out, ...)
+#endif
+
+using namespace std;
+
 Node::Node() : Node(NULL)
 {
 }
@@ -78,18 +90,20 @@ Node::Node(NodeOptions *options) : Publishable()
 
         if (commands & NODE_CONTROL_REBIRTH)
         {
-            nodeBirthMetric = new CallbackMetric(
+
+            auto nodeBirthMetric = BooleanMetric::create(
                 NODE_CONTROL_REBIRTH_NAME,
-                false,
-                METRIC_DATA_TYPE_BOOLEAN,
-                [this](CallbackMetric *metric, org_eclipse_tahu_protobuf_Payload_Metric *payload)
+                false);
+            nodeBirthMetric->setCommandCallback(
+                [this](__attribute__((unused)) Metric *metric, org_eclipse_tahu_protobuf_Payload_Metric *payload)
                 {
+                    LOGGER("Received a NCMD with a value %d\n", payload->value.boolean_value);
                     if (payload->value.boolean_value)
                     {
                         publishBirth();
-                    }
-                });
-            addMetric((Metric *)nodeBirthMetric);
+                    } });
+
+            addMetric(nodeBirthMetric);
         }
     }
 }
@@ -100,32 +114,6 @@ Node::~Node()
     {
         delete client;
     }
-    if (topicsConfigured)
-    {
-        free(nodeBaseTopic);
-        free(deviceBaseTopic);
-        if (clientTopics.nodeCommandTopic != NULL)
-        {
-            free(clientTopics.nodeCommandTopic);
-        }
-        if (clientTopics.deviceCommandTopic != NULL)
-        {
-            free(clientTopics.deviceCommandTopic);
-        }
-        if (clientTopics.primaryHostTopic != NULL)
-        {
-            free(clientTopics.primaryHostTopic);
-        }
-        if (clientTopics.nodeDeathTopic != NULL)
-        {
-            free(clientTopics.nodeDeathTopic);
-        }
-    }
-    if (nodeBirthMetric != NULL)
-    {
-        delete nodeBirthMetric;
-    }
-
 #ifdef _GLIBCXX_HAS_GTHREADS
     delete queueMutex;
 #endif
@@ -160,65 +148,32 @@ int Node::enable()
 
 void Node::publishBirth()
 {
-    reset_sparkplug_sequence();
+    LOGGER("Publishing Birth!\n");
     publish(this, true);
     for_each(devices.begin(), devices.end(), [this](Device *device)
              { publish((Publishable *)device, true); });
 }
 
-void Node::configureTopics(const char *groupId, const char *nodeId, const char *primaryHost)
+void Node::configureTopics(const std::string &groupId, const std::string &nodeId, const std::string &primaryHost)
 {
-    if (groupId != NULL && nodeId != NULL)
+    if (!groupId.empty() && !nodeId.empty())
     {
-        size_t nameSpaceSize, groupIdSize, nodeIdSize, primaryHostSize;
-        size_t miscSize;
+        groupBaseTopic.append(SPARKPLUG_NAMESPACE).append("/").append(groupId).append("/");
+        this->nodeId = nodeId;
 
-        nameSpaceSize = strlen(SPARKPLUG_NAMESPACE);
-        groupIdSize = strlen(groupId);
-        nodeIdSize = strlen(nodeId);
+        string nodeCommandTopic, deviceCommandTopic, primaryHostTopic, nodeDeathTopic;
 
-        // 3 slashes, 2 for printf sub, 1 for null character
-        miscSize = 3 + 2 + 1;
-        nodeBaseTopic = (char *)malloc(nameSpaceSize + groupIdSize + nodeIdSize + miscSize);
+        nodeCommandTopic.append(groupBaseTopic).append(NCMD).append("/").append(nodeId);
+        nodeDeathTopic.append(groupBaseTopic).append(NDEATH).append("/").append(nodeId);
+        deviceCommandTopic.append(groupBaseTopic).append(DCMD).append("/").append(nodeId).append("/+");
 
-        // 4 slashes, 4 for two printf subs, 1 for null character
-        miscSize = 4 + 4 + 1;
-        deviceBaseTopic = (char *)malloc(nameSpaceSize + groupIdSize + nodeIdSize + miscSize);
-
-        // Build our base topics for publishing and subscribing
-        sprintf(nodeBaseTopic, NODE_TOPIC_BUILDER, SPARKPLUG_NAMESPACE, groupId, "\%s", nodeId);
-        sprintf(deviceBaseTopic, DEVICE_TOPIC_BUILDER, SPARKPLUG_NAMESPACE, groupId, "\%s", nodeId, "\%s");
-
-        char *nodeCommandTopic, *deviceCommandTopic, *primaryHostTopic, *nodeDeathTopic;
-
-        // 3 slashes, 4 for NCMD, 1 for null character
-        miscSize = 3 + 4 + 1;
-        nodeCommandTopic = (char *)malloc(nameSpaceSize + groupIdSize + nodeIdSize + miscSize);
-        sprintf(nodeCommandTopic, NODE_TOPIC_BUILDER, SPARKPLUG_NAMESPACE, groupId, NCMD, nodeId);
-
-        // 3 slashes, 6 for NDEATH, 1 for null character
-        miscSize = 3 + 6 + 1;
-        nodeDeathTopic = (char *)malloc(nameSpaceSize + groupIdSize + nodeIdSize + miscSize);
-        sprintf(nodeDeathTopic, NODE_TOPIC_BUILDER, SPARKPLUG_NAMESPACE, groupId, NDEATH, nodeId);
-
-        // 4 slashes, 4 for NCMD, 1 for +, 1 for null character
-        miscSize = 4 + 4 + 1 + 1;
-        deviceCommandTopic = (char *)malloc(nameSpaceSize + groupIdSize + nodeIdSize + miscSize);
-        sprintf(deviceCommandTopic, DEVICE_TOPIC_BUILDER, SPARKPLUG_NAMESPACE, groupId, DCMD, nodeId, "+");
-
-        if (primaryHost != NULL)
+        if (!primaryHost.empty())
         {
-            primaryHostSize = strlen(primaryHost);
-            // 5 for STATE, 1 for slash, 1 for null character
-            miscSize = 5 + 1 + 1;
-            primaryHostTopic = (char *)malloc(primaryHostSize + miscSize);
-            sprintf(primaryHostTopic, PRIMARY_HOST_TOPIC_BUILDER, primaryHost);
-
+            primaryHostTopic.append("STATE/").append(primaryHost);
             setClientMode(PRIMARY_HOST);
         }
         else
         {
-            primaryHostTopic = NULL;
             setClientMode(SINGLE);
         }
 
@@ -264,21 +219,29 @@ int Node::publish(Publishable *publishable, bool isBirth)
 
     publishable->publishing();
 
-    char *topic;
+    string topic;
     if (publishable == this)
     {
-        PREPARE_TOPIC(topic, nodeBaseTopic, isBirth ? NBIRTH : NDATA);
+        topic.append(groupBaseTopic)
+            .append((isBirth ? NBIRTH : NDATA))
+            .append("/")
+            .append(nodeId);
     }
     else
     {
-        PREPARE_TOPIC(topic, deviceBaseTopic, isBirth ? DBIRTH : DDATA, publishable->getName());
+        topic.append(groupBaseTopic)
+            .append(isBirth ? DBIRTH : DDATA)
+            .append("/")
+            .append(nodeId)
+            .append("/")
+            .append(publishable->getName());
     }
-
-    PublishRequest *publishRequest = (PublishRequest *)malloc(sizeof(PublishRequest));
-    publishRequest->isBirth = isBirth;
-    publishRequest->publisher = (Publishable *)publishable;
-    publishRequest->topic = topic;
-    publishRequest->token = -1;
+    PublishRequest *publishRequest = new PublishRequest(
+        isBirth,
+        publishable,
+        topic,
+        -1,
+        0);
 
     return getActiveClient()->request(publishRequest);
 }
@@ -299,15 +262,11 @@ void Node::setActiveClient(SparkplugClient *activeClient)
     bool isActiveClientNull = this->activeClient == NULL;
     bool isNextClientNull = activeClient == NULL;
 
-    if (!isActiveClientNew)
-    {
-        return;
-    }
-
-    if (!isActiveClientNull)
+    if (isActiveClientNew && !isActiveClientNull)
     {
         this->activeClient->deactivate();
     }
+
     this->activeClient = activeClient;
 
     if (!isNextClientNull)
@@ -318,11 +277,6 @@ void Node::setActiveClient(SparkplugClient *activeClient)
 
 void Node::activateClient(SparkplugClient *client)
 {
-    if (client == this->activeClient)
-    {
-        return;
-    }
-
     if (client != NULL)
     {
         client->activate();
@@ -353,7 +307,6 @@ void Node::sync()
     {
         client->execute();
     }
-
     processEvents();
 }
 
@@ -361,11 +314,9 @@ int32_t Node::execute(int32_t executeTime)
 {
     if (!enabled)
     {
-        cout << "Cannot execute as the node has not been enabled\n";
+        LOGGER("Cannot execute as the node has not been enabled\n");
         return -1;
     }
-
-    sync();
 
     if (!isActive())
     {
@@ -397,7 +348,7 @@ void Node::begin()
 {
     if (!enabled)
     {
-        cout << "Cannot execute as the node has not been enabled\n";
+        LOGGER("Cannot execute as the node has not been enabled\n");
         return;
     }
 
@@ -410,12 +361,14 @@ void Node::begin()
         if (!running)
         {
             // Potential check for getting out of an endless loop
-            // Idea is to run this on its thread
+            // Idea is to run this on its own thread
             return;
         }
 
         nextExecute = execute(nextExecute);
+#if defined(__linux__)
         std::this_thread::sleep_for(std::chrono::seconds(nextExecute));
+#endif
     }
 }
 
@@ -435,37 +388,33 @@ void Node::addDevice(Device *device)
     devices.push_front(device);
 }
 
-int Node::onMessage(SparkplugClient *client, const char *topicName, int topicLength, void *payload, int payloadLength)
+int Node::onMessage(SparkplugClient *client, const std::string &topic, const void *payload, const int payloadLength)
 {
     if (client == getActiveClient())
     {
-        if (strstr(topicName, NCMD) != NULL)
+        if (topic.find(NCMD) != std::string::npos)
         {
-            if (strcmp(topicName, clientTopics.nodeCommandTopic) == 0)
+            if (topic.compare(clientTopics.nodeCommandTopic) == 0)
             {
                 Publishable::handleCommand(this, payload, payloadLength);
             }
         }
-        else if (strstr(topicName, DCMD) != NULL)
+        else if (topic.find(DCMD) != std::string::npos)
         {
             if (devices.empty())
             {
                 return 0;
             }
 
-            // Take off 1 for the "+" wildcard
-            size_t deviceCommandPefixLength = strlen(clientTopics.deviceCommandTopic) - 1;
-            size_t deviceNameLength = topicLength - deviceCommandPefixLength;
-            if (deviceNameLength > 0)
-            {
-                // Add 1 for null character
-                char *deviceName = (char *)malloc(deviceNameLength + 1);
-                memcpy(deviceName, topicName + deviceCommandPefixLength, deviceNameLength);
+            size_t size = clientTopics.deviceCommandTopic.size() - 1;
 
+            if (size < topic.size())
+            {
+                string deviceName = topic.substr(size);
                 forward_list<Device *>::iterator result;
 
                 result = find_if(devices.begin(), devices.end(), [deviceName](Device *device)
-                                 { return (strcmp(device->getName(), deviceName) == 0); });
+                                 { return deviceName.compare(device->getName()) == 0; });
 
                 if (result != devices.end())
                 {
@@ -474,13 +423,11 @@ int Node::onMessage(SparkplugClient *client, const char *topicName, int topicLen
                     // Handle Device Command
                     publishable->handleCommand(this, payload, payloadLength);
                 }
-
-                free(deviceName);
             }
         }
     }
 
-    if (clientTopics.primaryHostTopic != NULL && strcmp(topicName, clientTopics.primaryHostTopic) == 0)
+    if (!clientTopics.primaryHostTopic.empty() && topic.compare(clientTopics.primaryHostTopic) == 0)
     {
         if (strncmp((char *)payload, "ONLINE", payloadLength) == 0)
         {
@@ -517,20 +464,14 @@ bool Node::isActive()
         return false;
     }
 
+    sync();
+
     SparkplugClient *activeClient = getActiveClient();
     if (activeClient == NULL)
     {
         return false;
     }
     return activeClient->isConnected();
-}
-
-void *copyBuffer(void *source, size_t length)
-{
-    void *buffer;
-    buffer = malloc(length);
-    memcpy(buffer, source, length);
-    return buffer;
 }
 
 void Node::onEvent(SparkplugClient *client, EventType event, void *data)
@@ -541,19 +482,7 @@ void Node::onEvent(SparkplugClient *client, EventType event, void *data)
     {
     case CLIENT_MESSAGE:
     {
-        // Copy the incoming data into the queue
-        MessageEventStruct *incomingData, *queueData;
-
-        incomingData = (MessageEventStruct *)data;
-        queueData = (MessageEventStruct *)malloc(sizeof(MessageEventStruct));
-
-        queueData->topicName = (char *)copyBuffer((void *)incomingData->topicName, incomingData->topicLength + 1);
-        queueData->topicLength = incomingData->topicLength;
-
-        queueData->payload = copyBuffer(incomingData->payload, incomingData->payloadLength);
-        queueData->payloadLength = incomingData->payloadLength;
-
-        eventData = queueData;
+        eventData = new MessageEventStruct(*(MessageEventStruct *)data);
     }
     break;
     case CLIENT_CONNECTED:
@@ -617,18 +546,15 @@ void Node::processEvents()
         break;
         case CLIENT_MESSAGE:
         {
-            MessageEventStruct *messageData;
-            messageData = (MessageEventStruct *)eventData.data;
+            MessageEventStruct *messageData = (MessageEventStruct *)eventData.data;
 
             onMessage(
                 eventData.client,
-                messageData->topicName, messageData->topicLength,
+                messageData->topic,
                 messageData->payload, messageData->payloadLength);
 
             // We copy data to our queue, so we must free it
-            free(messageData->payload);
-            free((void *)messageData->topicName);
-            free(messageData);
+            delete messageData;
         }
         break;
         case CLIENT_CONNECTED:
@@ -648,4 +574,9 @@ void Node::processEvents()
             break;
         }
     }
+}
+
+bool Node::isNode()
+{
+    return true;
 }

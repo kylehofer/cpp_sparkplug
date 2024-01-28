@@ -33,12 +33,12 @@
 
 #include <tahu.h>
 
-#include "Publishable.h"
-#include "metrics/SimpleMetric.h"
+#include "Device.h"
+#include "metrics/simple/Int32Metric.h"
 
 TEST(Publishable, TestUpdate)
 {
-    Publishable testPublishable = Publishable("name", 30);
+    Device testPublishable = Device("name", 30);
 
     EXPECT_EQ(testPublishable.update(5), 25);
     EXPECT_EQ(testPublishable.update(0), 25);
@@ -63,22 +63,22 @@ TEST(Publishable, TestUpdate)
 
 TEST(Publishable, TestCanPublish)
 {
-    Publishable testPublishable = Publishable("name", 30);
-    SimpleMetric testMetric = SimpleMetric("MetricName", 20, METRIC_DATA_TYPE_INT32);
+    Device testPublishable = Device("name", 30);
+    auto testMetric = Int32Metric::create("MetricName", 20);
 
-    testPublishable.addMetric(&testMetric);
+    testPublishable.addMetric(testMetric);
 
     EXPECT_EQ(testPublishable.update(30), 30);
     EXPECT_FALSE(testPublishable.canPublish());
 
     int newValue = 21;
-    testMetric.setValue(&newValue);
+    testMetric->setValue(newValue);
     EXPECT_TRUE(testPublishable.canPublish());
 
     testPublishable.published();
 
     newValue = 22;
-    testMetric.setValue(&newValue);
+    testMetric->setValue(newValue);
     EXPECT_FALSE(testPublishable.canPublish());
 
     EXPECT_EQ(testPublishable.update(30), 30);

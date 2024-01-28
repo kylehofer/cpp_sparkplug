@@ -29,12 +29,14 @@
  * HISTORY:
  */
 
-#ifndef INCLUDE_SPARKPLUGCLIENT
-#define INCLUDE_SPARKPLUGCLIENT
+#ifndef SRC_CLIENTS_SPARKPLUGCLIENT
+#define SRC_CLIENTS_SPARKPLUGCLIENT
 
+#include <string>
 #include <tahu.h>
 #include "CommonTypes.h"
-#include "Publishable.h"
+#include "../Publishable.h"
+#include <string>
 
 #define MAX_TOPIC_LENGTH 256
 #define MAX_BUFFER_LENGTH 512
@@ -51,13 +53,43 @@ enum EventType
     CLIENT_UNDELIVERED
 };
 
-typedef struct
+struct MessageEventStruct
 {
-    const char *topicName;
-    int topicLength;
-    void *payload;
-    int payloadLength;
-} MessageEventStruct;
+private:
+    void *raw = nullptr;
+
+    void *copyBuffer(const void *source, size_t length)
+    {
+        void *buffer;
+        buffer = malloc(length);
+        memcpy(buffer, source, length);
+        return buffer;
+    }
+
+public:
+    MessageEventStruct(std::string topic, void *payload, int payloadLength)
+        : topic(topic), payload(payload), payloadLength(payloadLength) {}
+
+    MessageEventStruct(MessageEventStruct &source) : raw(copyBuffer(source.payload, source.payloadLength)),
+                                                     topic(std::string(source.topic)),
+                                                     payload(raw),
+                                                     payloadLength(source.payloadLength)
+
+    {
+    }
+
+    ~MessageEventStruct()
+    {
+        if (raw)
+        {
+            free(raw);
+        }
+    }
+
+    const std::string topic;
+    const void *payload;
+    const int payloadLength;
+};
 
 class SparkplugClient;
 
@@ -79,7 +111,7 @@ typedef int DeliveryToken;
  */
 typedef struct
 {
-    const char *address;
+    Uri address;
     const char *clientId;
     const char *username;
     const char *password;
@@ -92,10 +124,10 @@ typedef struct
  */
 typedef struct
 {
-    char *nodeCommandTopic;
-    char *nodeDeathTopic;
-    char *deviceCommandTopic;
-    char *primaryHostTopic;
+    std::string nodeCommandTopic;
+    std::string nodeDeathTopic;
+    std::string deviceCommandTopic;
+    std::string primaryHostTopic;
 } ClientTopicOptions;
 
 /**
@@ -123,17 +155,52 @@ private:
     ClientState state = DISCONNECTED;
     bool isPrimary = false;
     ClientEventHandler *handler = NULL;
+    int64_t bdSeq = 0;
+    uint8_t payloadSequence = 0;
+
     /**
      * @brief Encodes a Sparkplug protobuf payload into a raw byte buffer.
      *
      * @param payload The Sparkplug protobuf payload to encode
      * @param buffer A pointer to a buffer array that will contain the payload
-     * @return 0 if the encoding was a success
+     * @return The size of the encoded buffer
      */
-    int encodePayload(org_eclipse_tahu_protobuf_Payload *payload, uint8_t **buffer);
+    size_t encodePayload(org_eclipse_tahu_protobuf_Payload *payload, uint8_t **buffer);
+
+    /**
+     * @brief Increments the bdSeq
+     */
+    void incrementBdSeq();
+    /**
+     * @brief Resets the payload sequence
+     */
+    void resetSequence();
+    /**
+     * @brief Intializes a payload for publishing
+     * The returned payload needs to be freed
+     *
+     * @param hasSeq Whether the payload will have a sequence
+     * @return org_eclipse_tahu_protobuf_Payload*
+     */
+    org_eclipse_tahu_protobuf_Payload *initializePayload(bool hasSeq = true);
+
+    /**
+     * @brief Get the Sparkplug Payload that will be used to publish.
+     * @param isBirth
+     * @return org_eclipse_tahu_protobuf_Payload*
+     */
+    org_eclipse_tahu_protobuf_Payload *getPayload(bool isBirth = false);
 
 protected:
     ClientTopicOptions *topics;
+
+    /**
+     * @brief Builds a will payload
+     *
+     * @param buffer A pointer to a buffer to fill with the will payload
+     * @return size_t The size of the will payload
+     */
+    size_t getWillPayload(uint8_t **buffer);
 
     /**
      * @brief Get the ClientEventHandler
@@ -188,7 +255,7 @@ protected:
      * @param token A unique token that will be attached to the message being sent. Used to identify when messages are delivered by asynchronous clients
      * @return 0 if the request was sent succesfully
      */
-    virtual int publishMessage(const char *topic, uint8_t *buffer, size_t length, DeliveryToken *token) = 0;
+    virtual int publishMessage(const std::string &topic, uint8_t *buffer, size_t length, DeliveryToken *token) = 0;
     /**
      * @brief Configures an MQTT Client that will be used for publishing and subscribing to an MQTT host.
      *
@@ -212,7 +279,7 @@ protected:
      *
      * @param cause The cause of the disconnection
      */
-    void disconnected(char *cause);
+    void disconnected(const char *cause);
     /**
      * @brief Updates the state of the SparkplugClient
      *
@@ -220,7 +287,7 @@ protected:
      */
     void delivered(PublishRequest *publishRequest);
     void undelivered(PublishRequest *publishRequest);
-    void messageReceived(const char *topicName, int topicLength, void *payload, int payloadLength);
+    void messageReceived(const std::string &topic, void *payload, int payloadLength);
     void setState(ClientState state);
     /**
      * @brief Sets the SparkplugClient as the Primary Client
@@ -326,4 +393,4 @@ public:
     virtual bool isConnected() = 0;
 };
 
-#endif /* INCLUDE_SPARKPLUGCLIENT */
+#endif /* SRC_CLIENTS_SPARKPLUGCLIENT */

@@ -1,15 +1,18 @@
-#ifndef INCLUDE_METRICS_SIMPLEMETRIC
-#define INCLUDE_METRICS_SIMPLEMETRIC
+#ifndef SRC_METRICS_SIMPLE_SIMPLEMETRIC
+#define SRC_METRICS_SIMPLE_SIMPLEMETRIC
 
-#include "metrics/Metric.h"
+#include "../Metric.h"
+#include <memory>
 
 /**
  * @brief Simple Metric implementation.
  * Does not react to commands.
  *
  */
+template <typename T>
 class SimpleMetric : public Metric
 {
+private:
 public:
     /**
      * @brief Construct a new Sparkplug Metric
@@ -33,15 +36,27 @@ public:
      * @param data The piece of data that will be as the first value of the metric
      * @param dataType Sparkplug Datatype
      */
-    template <typename T>
     SimpleMetric(const char *name, T data, uint8_t dataType) : Metric(name, &data, sizeof(T), dataType){};
 
+    inline static SimpleMetric<uint8_t> create(const char *name, uint8_t value)
+    {
+        return SimpleMetric<uint8_t>(name, value, METRIC_DATA_TYPE_UINT8);
+    }
+
     /**
-     * @brief Does nothing when a command is received.
+     * @brief Sets a new value of the metric
      *
-     * @param payload
+     * @param data Pointer to the a piece of data that will be copied to the metric
      */
-    void onCommand(org_eclipse_tahu_protobuf_Payload_Metric *payload){};
+    void setValue(T value)
+    {
+        Metric::setValue(&value);
+    };
+
+    T &getValue()
+    {
+        return *(T *)data;
+    };
 };
 
-#endif /* INCLUDE_METRICS_SIMPLEMETRIC */
+#endif /* SRC_METRICS_SIMPLE_SIMPLEMETRIC */

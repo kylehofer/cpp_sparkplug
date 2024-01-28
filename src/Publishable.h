@@ -29,14 +29,15 @@
  * HISTORY:
  */
 
-#ifndef INCLUDE_PUBLISHABLE
-#define INCLUDE_PUBLISHABLE
+#ifndef SRC_PUBLISHABLE
+#define SRC_PUBLISHABLE
 
 #include "metrics/Metric.h"
 #include "CommonTypes.h"
 #include "Publisher.h"
 #include <tahu.h>
 #include <forward_list>
+#include <memory>
 
 using namespace std;
 
@@ -61,12 +62,12 @@ enum PublishableState
 class Publishable
 {
 private:
-    const char *name = NULL;
+    char *name = NULL;
     int32_t publishPeriod;
     int32_t nextPublish;
     PublishableState state = IDLE;
 
-    forward_list<Metric *> metrics;
+    forward_list<std::shared_ptr<Metric>> metrics;
 
     /**
      * @brief Get the State
@@ -80,16 +81,12 @@ private:
      */
     void setState(PublishableState);
 
-    /**
-     * @brief Initializes a base payload for adding metrics to.
-     * NOTE: Memory is allocated for the payload, and must be freed by the caller of this function.
-     *
-     * @param isBirth
-     * @return org_eclipse_tahu_protobuf_Payload*
-     */
-    org_eclipse_tahu_protobuf_Payload *initializePayload(bool isBirth);
-
 protected:
+    /**
+     * @brief Set the Publish Period
+     *
+     * @param publishPeriod
+     */
     void setPublishPeriod(int32_t publishPeriod);
 
 public:
@@ -111,7 +108,7 @@ public:
      * @param metrics An array of Metrics that will be handled by this Publishable
      * @param metricCount The number of Metrics being added
      */
-    void addMetric(Metric *metric);
+    void addMetric(const std::shared_ptr<Metric> &metric);
     /**
      * @brief Used to update the publishing timer for the Publishable. The amount of time supplied will be deducted from the remaining time before
      * the next publish. If more time has passed than the publish period then the Publishable will be marked as able to publish. The value returned
@@ -137,11 +134,12 @@ public:
      */
     bool canPublish();
     /**
-     * @brief Get the Sparkplug Payload that will be used to publish.
-     * @param isBirth
-     * @return org_eclipse_tahu_protobuf_Payload*
+     * @brief Adds the metrics from a publisher to a protobuf payload
+     *
+     * @param payload A protobuf payload that the Metrics will be added to
+     * @param isBirth If the payload is a part of a birth message
      */
-    org_eclipse_tahu_protobuf_Payload *getPayload(bool isBirth = false);
+    void addToPayload(org_eclipse_tahu_protobuf_Payload *payload, bool isBirth = false);
     /**
      * @brief Get the name of the Publishable
      *
@@ -155,7 +153,15 @@ public:
      * @param publisher The publisher that the command was received from
      * @param message The message received
      */
-    void handleCommand(Publisher *publisher, void *payload, int payloadLength);
+    void handleCommand(Publisher *publisher, const void *payload, const int payloadLength);
+
+    /**
+     * @brief Returns whether the Publishable instance is a Node.
+     *
+     * @return true
+     * @return false
+     */
+    virtual bool isNode() = 0;
 };
 
-#endif /* INCLUDE_PUBLISHABLE */
+#endif /* SRC_PUBLISHABLE */
