@@ -10,6 +10,10 @@ IF(DEFINED ENV{FETCH_REMOTE})
     SET(FETCH_REMOTE $ENV{FETCH_REMOTE})
 ENDIF()
 
+IF(DEFINED ENV{DEBUGGING})
+    add_definitions(-DDEBUGGING)
+ENDIF()
+
 IF(${BUILD_TARGET} STREQUAL "PICO")
     include(pico_sdk_import.cmake)
     set(PICO_BOARD pico_w)
@@ -56,7 +60,6 @@ target_include_directories(cpp_sparkplug PUBLIC "src/")
 
 IF(${BUILD_TARGET} STREQUAL "PICO")
     add_definitions(-DPICO)
-    add_definitions(-DDEBUGGING)
     SET(MQTT_ENABLE_TESTING FALSE CACHE BOOL "")
 
     IF(FETCH_REMOTE)

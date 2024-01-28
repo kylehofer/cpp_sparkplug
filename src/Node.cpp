@@ -46,8 +46,6 @@
 
 #define DDATA "DDATA"
 #define DBIRTH "DBIRTH"
-#define DDATA_APPEND "DDATA/"
-#define DBIRTH_APPEND "DBIRTH/"
 #define DCMD "DCMD"
 #define DDEATH "DDEATH"
 

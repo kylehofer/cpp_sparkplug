@@ -1,0 +1,16 @@
+[
+    {
+        "name": "Pico",
+        "compilers": {
+            "C": "/usr/bin/arm-none-eabi-gcc",
+            "CXX": "/usr/bin/arm-none-eabi-g++"
+        }
+    },
+    {
+        "name": "Linux",
+        "compilers": {
+            "C": "/usr/bin/gcc",
+            "CXX": "/usr/bin/g++"
+        }
+    }
+]
