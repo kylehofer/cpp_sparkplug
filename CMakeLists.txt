@@ -4,7 +4,7 @@ include(FetchContent)
 include(ExternalProject)
 
 SET(BUILD_TARGET PICO CACHE BOOL "")
-SET(FETCH_REMOTE TRUE CACHE BOOL "")
+SET(FETCH_REMOTE ON CACHE BOOL "")
 
 IF(DEFINED ENV{FETCH_REMOTE})
     SET(FETCH_REMOTE $ENV{FETCH_REMOTE})
@@ -16,7 +16,7 @@ IF(${BUILD_TARGET} STREQUAL "PICO")
     option(CPP_SPARKPLUG_PAHO "" OFF)
 ELSE()
     option(CPP_SPARKPLUG_PAHO "" ON)
-    option(SPARKPLUG_ENABLE_TESTING "" ON)
+    option(CPP_SPARKPLUG_TESTS "" ON)
 ENDIF()
 
 project(cpp_sparkplug C CXX ASM)
@@ -57,16 +57,13 @@ target_include_directories(cpp_sparkplug PUBLIC "src/")
 IF(${BUILD_TARGET} STREQUAL "PICO")
     add_definitions(-DPICO)
     add_definitions(-DDEBUGGING)
-    SET(MQTT_ENABLE_TESTING FALSE CACHE BOOL "")
+    SET(MQTT_ENABLE_TESTING FALSE)
 
     IF(FETCH_REMOTE)
         FetchContent_Declare(
             pico_tcp_client
             GIT_REPOSITORY https://github.com/kylehofer/pico_tcp_client.git
             GIT_TAG main
-            CMAKE_ARGS
-            -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-            -DCMAKE_C_COMPILER_WORKS=NO
         )
 
         FetchContent_MakeAvailable(pico_tcp_client)
@@ -115,9 +112,6 @@ IF(CPP_SPARKPLUG_PAHO)
         paho_mqtt
         GIT_REPOSITORY https://github.com/eclipse/paho.mqtt.c.git
         GIT_TAG e0ce44679aaeada4c39769f9d0c9bd954ad4b156 # release-1.4
-        CMAKE_ARGS
-        -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-        -DCMAKE_C_COMPILER_WORKS=NO
     )
 
     FetchContent_MakeAvailable(paho_mqtt)
@@ -135,7 +129,7 @@ target_link_libraries(cpp_sparkplug
     cpp_mqtt_client
 )
 
-IF(SPARKPLUG_ENABLE_TESTING AND NOT(${BUILD_TARGET} STREQUAL "PICO"))
+IF(CPP_SPARKPLUG_TESTS AND NOT(${BUILD_TARGET} STREQUAL "PICO"))
     enable_testing()
     add_subdirectory(./tests)
 ENDIF()

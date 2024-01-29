@@ -21,16 +21,10 @@ set(WITH_DOCS OFF CACHE BOOL "" FORCE)
 set(WITH_CJSON OFF CACHE BOOL "" FORCE)
 
 # Grabbing mosquitto
-ExternalProject_Add(mosquitto_external
+FetchContent_Declare(mosquitto_external
     GIT_REPOSITORY https://github.com/eclipse/mosquitto.git
     GIT_TAG b0277869d9806f6fab8e1bc11c4a4987c9a79ded # v2.0.15
-    INSTALL_COMMAND ""
-    CMAKE_ARGS
-    -DDOCUMENTATION=OFF
-    -DWITH_CJSON=OFF
 )
-
-add_dependencies(cpp_sparkplug mosquitto_external)
 
 target_link_libraries(
     cpp_sparkplug_tests
