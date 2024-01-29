@@ -10,3 +10,4 @@ _deps/
 .*
 CMakeFiles
 external/
+temp/
