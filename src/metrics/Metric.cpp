@@ -33,6 +33,7 @@
 
 #include "Metric.h"
 #include <iostream>
+#include <pb_decode.h>
 #include "../properties/simple/BooleanProperty.h"
 
 Metric::~Metric()

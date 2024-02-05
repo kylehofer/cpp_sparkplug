@@ -35,10 +35,13 @@
 Property::Property(const char *name, void *data, size_t size, uint8_t dataType)
 {
     this->name = strdup(name);
-    this->data = malloc(size);
-    this->size = size;
+    if (size > 0)
+    {
+        this->data = malloc(size);
+        this->size = size;
+        memcpy(this->data, data, size);
+    }
     this->dataType = dataType;
-    memcpy(this->data, data, size);
 }
 
 Property::~Property()

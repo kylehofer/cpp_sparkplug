@@ -129,6 +129,10 @@ target_link_libraries(cpp_sparkplug
     cpp_mqtt_client
 )
 
+IF(NOT(${BUILD_TARGET} STREQUAL "PICO"))
+    add_subdirectory(./examples)
+ENDIF()
+
 IF(CPP_SPARKPLUG_TESTS AND NOT(${BUILD_TARGET} STREQUAL "PICO"))
     enable_testing()
     add_subdirectory(./tests)
