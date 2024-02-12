@@ -214,7 +214,7 @@ org_eclipse_tahu_protobuf_Payload *SparkplugClient::initializePayload(bool hasSe
     // Initialize payload
     memset(payload, 0, sizeof(org_eclipse_tahu_protobuf_Payload));
     payload->has_timestamp = true;
-    payload->timestamp = get_current_timestamp();
+    payload->timestamp = getTime();
     if (hasSeq)
     {
         LOGGER("Current Sequence Number: %u\n", payloadSequence);

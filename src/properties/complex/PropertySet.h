@@ -22,10 +22,9 @@ public:
      * @param name The name of the Sparkplug Property Set
      * @return std::shared_ptr<PropertySet>
      */
-    static std::shared_ptr<PropertySet> create(const char *name)
-    {
-        return std::shared_ptr<PropertySet>(new PropertySet(name));
-    }
+    static std::shared_ptr<PropertySet> create(const char *name);
+    static std::shared_ptr<PropertySet> create(const char *name, const std::shared_ptr<Property> &property);
+    static std::shared_ptr<PropertySet> create(const char *name, const std::vector<std::shared_ptr<Property>> &properties);
 
     /**
      * @brief Adds the property set to a property set
@@ -41,6 +40,7 @@ public:
      * @param property
      */
     void addProperty(const std::shared_ptr<Property> &property);
+    void addProperties(const std::vector<std::shared_ptr<Property>> &properties);
 };
 
 #endif /* SRC_PROPERTIES_COMPLEX_PROPERTYSET */

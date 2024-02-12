@@ -155,7 +155,7 @@ private:
     ClientState state = DISCONNECTED;
     bool isPrimary = false;
     ClientEventHandler *handler = NULL;
-    int64_t bdSeq = 0;
+    int64_t bdSeq = 255;
     uint8_t payloadSequence = 0;
 
     /**
@@ -391,6 +391,8 @@ public:
      * @return false
      */
     virtual bool isConnected() = 0;
+
+    virtual time_t getTime() = 0;
 };
 
 #endif /* SRC_CLIENTS_SPARKPLUGCLIENT */

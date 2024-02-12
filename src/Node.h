@@ -235,7 +235,7 @@ public:
      * @return SparkplugClient*
      */
     template <typename T>
-    SparkplugClient *addClient(ClientOptions *options) { return addClient((SparkplugClient *)(new T((ClientEventHandler *)this, options))); };
+    T *addClient(ClientOptions *options) { return (T *)addClient((SparkplugClient *)(new T((ClientEventHandler *)this, options))); };
     /**
      * @brief This function enables the node so it can begin to publish Sparkplug Payloads.
      * It will ensure the required topics have been configured, Clients have been added to the node,
@@ -317,6 +317,7 @@ public:
     virtual bool isNode() override;
 
     using Publishable::addMetric;
+    using Publishable::addMetrics;
     using Publishable::addToPayload;
     using Publishable::canPublish;
     using Publishable::getName;

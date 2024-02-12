@@ -38,3 +38,28 @@ void PropertySet::addProperty(const std::shared_ptr<Property> &property)
 {
     properties.push_back(std::move(property));
 }
+
+void PropertySet::addProperties(const std::vector<std::shared_ptr<Property>> &properties)
+{
+
+    addProperties(properties);
+}
+std::shared_ptr<PropertySet> PropertySet::create(const char *name)
+{
+
+    return std::shared_ptr<PropertySet>(new PropertySet(name));
+}
+
+std::shared_ptr<PropertySet> PropertySet::create(const char *name, const std::shared_ptr<Property> &property)
+{
+    auto set = create(name);
+    set->addProperty(property);
+    return set;
+}
+
+std::shared_ptr<PropertySet> PropertySet::create(const char *name, const std::vector<std::shared_ptr<Property>> &properties)
+{
+    auto set = create(name);
+    set->addProperties(properties);
+    return set;
+}

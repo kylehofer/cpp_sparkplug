@@ -134,6 +134,7 @@ public:
     void onCommand(org_eclipse_tahu_protobuf_Payload_Metric *metric);
 
     void addProperty(const std::shared_ptr<Property> &property);
+    void addProperties(const std::vector<std::shared_ptr<Property>> &properties);
 
     /**
      * @brief Sets the command handler for the metric.

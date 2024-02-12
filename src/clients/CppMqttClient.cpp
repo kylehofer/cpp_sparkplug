@@ -168,6 +168,15 @@ int CppMqttClient::subscribeToCommands()
     nodeCommandPayload.setTopic(encodedNodeTopic);
     deviceCommandPayload.setTopic(encodedDeviceTopic);
 
+    nodeCommandPayload.setMaximumQos(QoS::ONE);
+    deviceCommandPayload.setMaximumQos(QoS::ONE);
+
+    nodeCommandPayload.setNoLocal(true);
+    deviceCommandPayload.setNoLocal(true);
+
+    nodeCommandPayload.setRetainHandling(RetainHandling::NO_RETAIN);
+    deviceCommandPayload.setRetainHandling(RetainHandling::NO_RETAIN);
+
     returnCode = client.subscribe(nodeCommandPayload, deviceCommandPayload);
 
     if (returnCode == -1)
@@ -228,6 +237,9 @@ int CppMqttClient::configureClient(ClientOptions *options)
     }
 
     will = new WillProperties();
+
+    will->setQoS(QoS::ONE);
+    will->setRetain(false);
 
     will->setWillTopic(topics->nodeDeathTopic.c_str(), topics->nodeDeathTopic.size());
 

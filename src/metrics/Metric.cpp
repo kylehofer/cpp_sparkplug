@@ -117,6 +117,14 @@ void Metric::addProperty(const std::shared_ptr<Property> &property)
     properties.push_back(std::move(property));
 }
 
+void Metric::addProperties(const std::vector<std::shared_ptr<Property>> &properties)
+{
+    for (auto property : properties)
+    {
+        addProperty(property);
+    }
+}
+
 void Metric::setCommandHandler(CommandHandler *handler)
 {
     if (isReadOnly)
