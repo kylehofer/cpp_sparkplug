@@ -33,6 +33,7 @@
 
 #include "Metric.h"
 #include <iostream>
+#include <pb_decode.h>
 #include "../properties/simple/BooleanProperty.h"
 
 Metric::~Metric()
@@ -114,6 +115,14 @@ const char *Metric::getName()
 void Metric::addProperty(const std::shared_ptr<Property> &property)
 {
     properties.push_back(std::move(property));
+}
+
+void Metric::addProperties(const std::vector<std::shared_ptr<Property>> &properties)
+{
+    for (auto property : properties)
+    {
+        addProperty(property);
+    }
 }
 
 void Metric::setCommandHandler(CommandHandler *handler)

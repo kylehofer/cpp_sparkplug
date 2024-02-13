@@ -169,7 +169,7 @@ void Node::configureTopics(const std::string &groupId, const std::string &nodeId
 
         if (!primaryHost.empty())
         {
-            primaryHostTopic.append("STATE/").append(primaryHost);
+            primaryHostTopic.append(SPARKPLUG_NAMESPACE).append("/STATE/").append(primaryHost);
             setClientMode(PRIMARY_HOST);
         }
         else
@@ -429,7 +429,8 @@ int Node::onMessage(SparkplugClient *client, const std::string &topic, const voi
 
     if (!clientTopics.primaryHostTopic.empty() && topic.compare(clientTopics.primaryHostTopic) == 0)
     {
-        if (strncmp((char *)payload, "ONLINE", payloadLength) == 0)
+        std::string json((char *)payload, payloadLength);
+        if (json.find("\"online\": true") != std::string::npos)
         {
             // Primary Host Online
             if (getActiveClient() != client)
@@ -437,7 +438,7 @@ int Node::onMessage(SparkplugClient *client, const std::string &topic, const voi
                 activateClient(client);
             }
         }
-        else if (strncmp((char *)payload, "OFFLINE", payloadLength) == 0)
+        else if (json.find("\"online\": false") != std::string::npos)
         {
             if (getActiveClient() == client)
             {

@@ -34,12 +34,7 @@
 #include <tahu.h>
 
 #include "metrics/simple/Int32Metric.h"
-
-typedef struct
-{
-    int property1;
-    int property2;
-} TestStruct;
+#include "metrics/simple/StringMetric.h"
 
 TEST(SimpleMetric, TestSimpleDirty)
 {
@@ -74,128 +69,32 @@ TEST(SimpleMetric, TestSimpleDirty)
     EXPECT_EQ(testMetric->getValue(), newValue);
 }
 
-// TEST(SimpleMetric, TestStringDirty)
-// {
-//     static const int BUFFER_SIZE = 20;
+TEST(SimpleMetric, TestStringDirty)
+{
+    auto testMetric = StringMetric::create("MetricName", "SomeString");
 
-//     char buffer1[BUFFER_SIZE];
-//     char buffer2[BUFFER_SIZE];
+    EXPECT_FALSE(testMetric->isDirty());
+    EXPECT_EQ(testMetric->getValue(), "SomeString");
 
-//     memset(buffer1, 0, BUFFER_SIZE);
-//     memset(buffer2, 0, BUFFER_SIZE);
+    testMetric->setValue("SomeString");
+    EXPECT_FALSE(testMetric->isDirty());
+    EXPECT_EQ(testMetric->getValue(), "SomeString");
 
-//     memcpy(buffer1, "SomeString", 11);
+    testMetric->setValue("AnotherString");
+    EXPECT_TRUE(testMetric->isDirty());
+    EXPECT_EQ(testMetric->getValue(), "AnotherString");
+    EXPECT_NE(testMetric->getValue(), "SomeString");
 
-//     SimpleMetric testMetric = SimpleMetric("MetricName", buffer1, BUFFER_SIZE, METRIC_DATA_TYPE_STRING);
+    testMetric->setValue("AnotherString");
+    EXPECT_TRUE(testMetric->isDirty());
+    EXPECT_EQ(testMetric->getValue(), "AnotherString");
+    EXPECT_NE(testMetric->getValue(), "SomeString");
 
-//     EXPECT_FALSE(testMetric->isDirty());
-//     EXPECT_EQ(memcmp(testMetric->getValue(), buffer1, BUFFER_SIZE), 0);
-//     EXPECT_NE(testMetric->getValue(), buffer1);
-
-//     memcpy(buffer2, "SomeString", 11);
-
-//     testMetric->setValue(buffer2);
-//     EXPECT_FALSE(testMetric->isDirty());
-//     EXPECT_EQ(memcmp(testMetric->getValue(), buffer2, BUFFER_SIZE), 0);
-//     EXPECT_NE(testMetric->getValue(), buffer2);
-
-//     memcpy(buffer2, "AnotherString", 11);
-
-//     testMetric->setValue(buffer2);
-//     EXPECT_TRUE(testMetric->isDirty());
-//     EXPECT_EQ(memcmp(testMetric->getValue(), buffer2, BUFFER_SIZE), 0);
-//     EXPECT_NE(testMetric->getValue(), buffer2);
-
-//     memcpy(buffer2, "AnotherString", 11);
-
-//     testMetric->setValue(buffer2);
-//     EXPECT_TRUE(testMetric->isDirty());
-//     EXPECT_EQ(memcmp(testMetric->getValue(), buffer2, BUFFER_SIZE), 0);
-//     EXPECT_NE(testMetric->getValue(), buffer2);
-
-//     memcpy(buffer2, "SomeString", 11);
-
-//     testMetric->setValue(buffer2);
-//     EXPECT_TRUE(testMetric->isDirty());
-//     EXPECT_EQ(memcmp(testMetric->getValue(), buffer2, BUFFER_SIZE), 0);
-//     EXPECT_NE(testMetric->getValue(), buffer2);
-// }
-
-// TEST(SimpleMetric, TestStructDirty)
-// {
-//     TestStruct value1 = {5, 10};
-//     TestStruct value2 = {5, 10};
-
-//     static const int STRUCT_SIZE = sizeof(TestStruct);
-
-//     SimpleMetric testMetric = SimpleMetric("MetricName", value1, METRIC_DATA_TYPE_INT32);
-
-//     EXPECT_FALSE(testMetric->isDirty());
-
-//     testMetric->setValue(&value2);
-//     EXPECT_FALSE(testMetric->isDirty());
-//     EXPECT_EQ(memcmp(testMetric->getValue(), &value1, STRUCT_SIZE), 0);
-//     EXPECT_NE((TestStruct *)testMetric->getValue(), &value1);
-
-//     value2 = {10, 5};
-
-//     testMetric->setValue(&value2);
-//     EXPECT_TRUE(testMetric->isDirty());
-//     EXPECT_EQ(memcmp(testMetric->getValue(), &value2, STRUCT_SIZE), 0);
-//     EXPECT_NE((TestStruct *)testMetric->getValue(), &value2);
-
-//     value2 = {10, 5};
-
-//     testMetric->setValue(&value2);
-//     EXPECT_TRUE(testMetric->isDirty());
-//     EXPECT_EQ(memcmp(testMetric->getValue(), &value2, STRUCT_SIZE), 0);
-//     EXPECT_NE((TestStruct *)testMetric->getValue(), &value2);
-
-//     value2 = {5, 10};
-
-//     testMetric->setValue(&value2);
-//     EXPECT_TRUE(testMetric->isDirty());
-//     EXPECT_EQ(memcmp(testMetric->getValue(), &value2, STRUCT_SIZE), 0);
-//     EXPECT_NE((TestStruct *)testMetric->getValue(), &value2);
-// }
-
-// TEST(SimpleMetric, TestStructPointerDirty)
-// {
-//     TestStruct value1 = {5, 10};
-//     TestStruct value2 = {5, 10};
-
-//     static const int STRUCT_SIZE = sizeof(TestStruct);
-
-//     SimpleMetric testMetric = SimpleMetric("MetricName", &value1, STRUCT_SIZE, METRIC_DATA_TYPE_INT32);
-
-//     EXPECT_FALSE(testMetric->isDirty());
-
-//     testMetric->setValue(&value2);
-//     EXPECT_FALSE(testMetric->isDirty());
-//     EXPECT_EQ(memcmp(testMetric->getValue(), &value1, STRUCT_SIZE), 0);
-//     EXPECT_NE((TestStruct *)testMetric->getValue(), &value1);
-
-//     value2 = {10, 5};
-
-//     testMetric->setValue(&value2);
-//     EXPECT_TRUE(testMetric->isDirty());
-//     EXPECT_EQ(memcmp(testMetric->getValue(), &value2, STRUCT_SIZE), 0);
-//     EXPECT_NE((TestStruct *)testMetric->getValue(), &value2);
-
-//     value2 = {10, 5};
-
-//     testMetric->setValue(&value2);
-//     EXPECT_TRUE(testMetric->isDirty());
-//     EXPECT_EQ(memcmp(testMetric->getValue(), &value2, STRUCT_SIZE), 0);
-//     EXPECT_NE((TestStruct *)testMetric->getValue(), &value2);
-
-//     value2 = {5, 10};
-
-//     testMetric->setValue(&value2);
-//     EXPECT_TRUE(testMetric->isDirty());
-//     EXPECT_EQ(memcmp(testMetric->getValue(), &value2, STRUCT_SIZE), 0);
-//     EXPECT_NE((TestStruct *)testMetric->getValue(), &value2);
-// }
+    testMetric->setValue("SomeString");
+    EXPECT_TRUE(testMetric->isDirty());
+    EXPECT_EQ(testMetric->getValue(), "SomeString");
+    EXPECT_NE(testMetric->getValue(), "AnotherString");
+}
 
 TEST(SimpleMetric, TestAddToPayload)
 {

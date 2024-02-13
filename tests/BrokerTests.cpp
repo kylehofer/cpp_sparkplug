@@ -458,7 +458,7 @@ TYPED_TEST_P(BrokerTests, NodeWithPrimaryHost)
 
     testClient.waitForReady(MAX_RETRIES);
 
-    testClient.publish("STATE/MyPrimary", (void *)"ONLINE", 7, true);
+    testClient.publish("spBv1.0/STATE/MyPrimary", (void *)"{ \"online\": true, \"timestamp\": 0 }", 36, true);
 
     retries = 0;
     while (!node.isActive() && retries++ < MAX_RETRIES)
@@ -472,7 +472,7 @@ TYPED_TEST_P(BrokerTests, NodeWithPrimaryHost)
     EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/NBIRTH/NodeId", 0);
     EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/DBIRTH/NodeId/DeviceName", 1);
 
-    testClient.publish("STATE/MyPrimary", (void *)"OFFLINE", 7, true);
+    testClient.publish("spBv1.0/STATE/MyPrimary", (void *)"{ \"online\": false, \"timestamp\": 0 }", 36, true);
 
     retries = 0;
     while (node.isActive() && retries++ < MAX_RETRIES)
@@ -481,7 +481,7 @@ TYPED_TEST_P(BrokerTests, NodeWithPrimaryHost)
         sleep_for(milliseconds(RETRY_TIMEOUT));
     }
 
-    testClient.publish("STATE/MyPrimary", (void *)"ONLINE", 7, true);
+    testClient.publish("spBv1.0/STATE/MyPrimary", (void *)"{ \"online\": true, \"timestamp\": 0 }", 36, true);
 
     retries = 0;
     while (!node.isActive() && retries++ < MAX_RETRIES)

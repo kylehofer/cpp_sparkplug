@@ -29,8 +29,8 @@
  * HISTORY:
  */
 
-#ifndef INCLUDE_PAHOCLIENT
-#define INCLUDE_PAHOCLIENT
+#ifndef SRC_CLIENTS_PAHOCLIENT
+#define SRC_CLIENTS_PAHOCLIENT
 
 #include "clients/SparkplugClient.h"
 #include "CommonTypes.h"
@@ -93,6 +93,8 @@ public:
      * @return int
      */
     int request(PublishRequest *publishRequest);
+
+    virtual time_t getTime() override;
 };
 
-#endif /* INCLUDE_PAHOCLIENT */
+#endif /* SRC_CLIENTS_PAHOCLIENT */

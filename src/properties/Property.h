@@ -66,7 +66,7 @@ public:
      * @param property
      * @return int
      */
-    int addToPropertySet(org_eclipse_tahu_protobuf_Payload_PropertySet *propertySet, bool isBirth);
+    virtual int addToPropertySet(org_eclipse_tahu_protobuf_Payload_PropertySet *propertySet, bool isBirth);
     /**
      * @brief Sets a new value of the property
      *

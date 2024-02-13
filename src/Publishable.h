@@ -109,6 +109,7 @@ public:
      * @param metricCount The number of Metrics being added
      */
     void addMetric(const std::shared_ptr<Metric> &metric);
+    void addMetrics(const std::vector<std::shared_ptr<Metric>> &metrics);
     /**
      * @brief Used to update the publishing timer for the Publishable. The amount of time supplied will be deducted from the remaining time before
      * the next publish. If more time has passed than the publish period then the Publishable will be marked as able to publish. The value returned

@@ -47,7 +47,7 @@ class CppMqttClient : public SparkplugClient, MqttClientHandler
 private:
     MqttClient client;
 
-    Token subscriptionToken;
+    Token subscriptionToken = -1;
 
     ClientOptions *options;
     WillProperties *will = nullptr;
@@ -126,13 +126,13 @@ protected:
 
 public:
     /**
-     * @brief Construct a new Pico MQTT Client
+     * @brief Construct a new MQTT Client
      */
     CppMqttClient() : SparkplugClient()
     {
     }
     /**
-     * @brief Construct a new Pico MQTT Client
+     * @brief Construct a new MQTT Client
      *
      * @param handler The Event Handler that manages the callbacks from the Client
      * @param options The options for configuring the MQTT Client
@@ -145,7 +145,6 @@ public:
 
     /**
      * @brief Used to synchronise the MQTT client.
-     * As the Pico Client is async this function does nothing.
      *
      */
     void sync();

@@ -61,8 +61,6 @@ private:
 
     uint64_t alias = 0;
     uint8_t dataType;
-    size_t size;
-    bool dirty = false;
 
     CommandHandler *handler = NULL;
     std::function<void(Metric *, org_eclipse_tahu_protobuf_Payload_Metric *)> callback;
@@ -70,6 +68,8 @@ private:
 
 protected:
     std::vector<std::shared_ptr<Property>> properties;
+    size_t size;
+    bool dirty = false;
     void *data = NULL;
 
 public:
@@ -134,6 +134,7 @@ public:
     void onCommand(org_eclipse_tahu_protobuf_Payload_Metric *metric);
 
     void addProperty(const std::shared_ptr<Property> &property);
+    void addProperties(const std::vector<std::shared_ptr<Property>> &properties);
 
     /**
      * @brief Sets the command handler for the metric.

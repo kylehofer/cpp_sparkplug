@@ -134,13 +134,13 @@ TEST(NodeTests, addPrimaryClients)
 
     EXPECT_STREQ(topics->nodeCommandTopic.c_str(), "spBv1.0/GroupId/NCMD/NodeId");
     EXPECT_STREQ(topics->deviceCommandTopic.c_str(), "spBv1.0/GroupId/DCMD/NodeId/+");
-    EXPECT_STREQ(topics->primaryHostTopic.c_str(), "STATE/PrimaryHost");
+    EXPECT_STREQ(topics->primaryHostTopic.c_str(), "spBv1.0/STATE/PrimaryHost");
 
     topics = mockClient2->getTopics();
 
     EXPECT_STREQ(topics->nodeCommandTopic.c_str(), "spBv1.0/GroupId/NCMD/NodeId");
     EXPECT_STREQ(topics->deviceCommandTopic.c_str(), "spBv1.0/GroupId/DCMD/NodeId/+");
-    EXPECT_STREQ(topics->primaryHostTopic.c_str(), "STATE/PrimaryHost");
+    EXPECT_STREQ(topics->primaryHostTopic.c_str(), "spBv1.0/STATE/PrimaryHost");
 }
 
 TEST(NodeTests, enable)
@@ -235,20 +235,14 @@ TEST(NodeTests, executeHappyPrimaryTest)
 
     mockClient->connect();
 
-    EXPECT_EQ(node.execute(0), 1) << "Client is connected, however it is not active yet.";
-
-    mockClient->active();
-
     EXPECT_EQ(node.execute(0), 1) << "Client is connected, however the node is still waiting for primary host to activate the client.";
 
     EXPECT_CALL(*mockClient, subscribeToCommands()).WillOnce([mockClient]()
                                                              { return 0; });
-
-    const char primaryHostTopic[] = "STATE/PrimaryHost";
-
+    const char primaryHostTopic[] = "spBv1.0/STATE/PrimaryHost";
     {
         MessageEventStruct messageEvent = {
-            primaryHostTopic, (char *)"ONLINE", 7};
+            primaryHostTopic, (char *)"{ \"online\": true, \"timestamp\": 0 }", 35};
 
         node.onEvent(mockClient, CLIENT_MESSAGE, &messageEvent);
     }
@@ -277,7 +271,7 @@ TEST(NodeTests, executeHappyPrimaryTest)
     EXPECT_STREQ(requestedPublish->topic.c_str(), "spBv1.0/GroupId/NBIRTH/NodeId");
 
     // We should expect our brocket to be requested to send this request
-    EXPECT_CALL(*mockClient, publishMessage(requestedPublish->topic, NotNull(), 24, &requestedPublish->token))
+    EXPECT_CALL(*mockClient, publishMessage(requestedPublish->topic, NotNull(), 25, &requestedPublish->token))
         .WillOnce([mockClient](std::string topic, uint8_t *buffer, size_t length, DeliveryToken *token)
                   { return 0; });
 
@@ -341,12 +335,12 @@ TEST(NodeTests, executeHappyTest)
 
     EXPECT_EQ(node.execute(0), 1) << "Client is connected, and waiting for commands to subscribe.";
 
-    const char primaryHostTopic[] = "STATE/PrimaryHost";
+    const char primaryHostTopic[] = "spBv1.0/STATE/PrimaryHost";
 
     // Sending message should have no affect
     {
         MessageEventStruct messageEvent = {
-            primaryHostTopic, (char *)"ONLINE", 7};
+            primaryHostTopic, (char *)"{ \"online\": true, \"timestamp\": 0 }", 35};
 
         node.onEvent(mockClient, CLIENT_MESSAGE, &messageEvent);
     }
@@ -374,7 +368,7 @@ TEST(NodeTests, executeHappyTest)
     EXPECT_STREQ(requestedPublish->topic.c_str(), "spBv1.0/GroupId/NBIRTH/NodeId");
 
     // We should expect our brocket to be requested to send this request
-    EXPECT_CALL(*mockClient, publishMessage(requestedPublish->topic, NotNull(), 24, &requestedPublish->token))
+    EXPECT_CALL(*mockClient, publishMessage(requestedPublish->topic, NotNull(), 25, &requestedPublish->token))
         .WillOnce([mockClient](std::string topic, uint8_t *buffer, size_t length, DeliveryToken *token)
                   { return 0; });
 

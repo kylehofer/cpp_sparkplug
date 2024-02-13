@@ -35,8 +35,9 @@
 #include "SimpleProperty.h"
 #include <stdint.h>
 #include <tahu.h>
+#include <string>
 
-class StringProperty : public SimpleProperty<string>
+class StringProperty : public SimpleProperty<std::string>
 {
 private:
     /**
@@ -45,7 +46,7 @@ private:
      * @param name The name of the Sparkplug Property
      * @param data The first value of the property
      */
-    StringProperty(const char *name, string data) : SimpleProperty(name, data, PROPERTY_DATA_TYPE_STRING){};
+    StringProperty(const char *name, std::string data) : SimpleProperty(name, (void *)data.c_str(), data.size(), PROPERTY_DATA_TYPE_STRING){};
 
 public:
     /**
@@ -55,7 +56,7 @@ public:
      * @param data The first value of the property
      * @return std::shared_ptr<StringProperty>
      */
-    static std::shared_ptr<StringProperty> create(const char *name, string data)
+    static std::shared_ptr<StringProperty> create(const char *name, std::string data)
     {
         return std::shared_ptr<StringProperty>(new StringProperty(name, data));
     }

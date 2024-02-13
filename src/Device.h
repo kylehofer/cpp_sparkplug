@@ -82,6 +82,7 @@ public:
     virtual bool isNode() override;
 
     using Publishable::addMetric;
+    using Publishable::addMetrics;
     using Publishable::addToPayload;
     using Publishable::canPublish;
     using Publishable::getName;

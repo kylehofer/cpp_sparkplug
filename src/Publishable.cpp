@@ -64,7 +64,15 @@ Publishable::Publishable(const char *name, int publishPeriod) : publishPeriod(pu
 
 void Publishable::addMetric(const std::shared_ptr<Metric> &metric)
 {
-    metrics.push_front(metric);
+    metrics.push_front(std::move(metric));
+}
+
+void Publishable::addMetrics(const std::vector<std::shared_ptr<Metric>> &metrics)
+{
+    for (auto &metric : metrics)
+    {
+        addMetric(metric);
+    }
 }
 
 int32_t Publishable::update(int32_t elapsed)
