@@ -20,12 +20,6 @@ target_include_directories(cpp_sparkplug_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR
 set(WITH_DOCS OFF CACHE BOOL "" FORCE)
 set(WITH_CJSON OFF CACHE BOOL "" FORCE)
 
-# Grabbing mosquitto
-FetchContent_Declare(mosquitto_external
-    GIT_REPOSITORY https://github.com/eclipse/mosquitto.git
-    GIT_TAG b0277869d9806f6fab8e1bc11c4a4987c9a79ded # v2.0.15
-)
-
 target_link_libraries(
     cpp_sparkplug_tests
     GTest::gtest_main

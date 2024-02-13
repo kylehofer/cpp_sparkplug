@@ -47,7 +47,7 @@ class CppMqttClient : public SparkplugClient, MqttClientHandler
 private:
     MqttClient client;
 
-    Token subscriptionToken;
+    Token subscriptionToken = -1;
 
     ClientOptions *options;
     WillProperties *will = nullptr;

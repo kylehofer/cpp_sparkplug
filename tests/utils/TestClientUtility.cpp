@@ -208,7 +208,7 @@ static void onMessageCallback(struct mosquitto *client, void *userdata, const st
 }
 static void onConnectCallback(struct mosquitto *client, void *userdata, int result)
 {
-    mosquitto_subscribe(client, NULL, "spBv1.0/#", 0);
+    mosquitto_subscribe(client, NULL, "spBv1.0/GroupId/#", 0);
 }
 static void onSubscribeCallback(struct mosquitto *client, void *userdata, int mid, int qosCount, const int *grantedQos)
 {

@@ -41,8 +41,10 @@ void PropertySet::addProperty(const std::shared_ptr<Property> &property)
 
 void PropertySet::addProperties(const std::vector<std::shared_ptr<Property>> &properties)
 {
-
-    addProperties(properties);
+    for (auto &property : properties)
+    {
+        addProperty(property);
+    }
 }
 std::shared_ptr<PropertySet> PropertySet::create(const char *name)
 {

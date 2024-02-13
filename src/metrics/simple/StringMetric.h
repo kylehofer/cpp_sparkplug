@@ -35,8 +35,9 @@
 #include "SimpleMetric.h"
 #include <stdint.h>
 #include <tahu.h>
+#include <string>
 
-class StringMetric : public SimpleMetric<string>
+class StringMetric : public SimpleMetric<std::string>
 {
 private:
     /**
@@ -45,19 +46,37 @@ private:
      * @param name The name of the Sparkplug Metric
      * @param data The first value of the metric
      */
-    StringMetric(const char *name, string data) : SimpleMetric(name, data, METRIC_DATA_TYPE_STRING){};
+    StringMetric(const char *name, std::string data) : SimpleMetric(name, (void *)data.c_str(), data.length() + 1, METRIC_DATA_TYPE_STRING){};
 
 public:
     /**
-     * @brief Construct a new string Sparkplug Metric shared pointer
+     * @brief Construct a new std::string Sparkplug Metric shared pointer
      *
      * @param name The name of the Sparkplug Metric
      * @param data The first value of the metric
      * @return std::shared_ptr<StringMetric>
      */
-    static std::shared_ptr<StringMetric> create(const char *name, string data)
+    static std::shared_ptr<StringMetric> create(const char *name, std::string data)
     {
         return std::shared_ptr<StringMetric>(new StringMetric(name, data));
+    }
+
+    void setValue(std::string value)
+    {
+        if (size == value.length() + 1)
+        {
+            (dirty = (dirty || memcmp(value.c_str(), data, size) != 0)) && memcpy(data, value.c_str(), size);
+            return;
+        }
+        dirty = true;
+        free(data);
+        size = value.length();
+        data = strdup(value.c_str());
+    }
+
+    std::string getValue()
+    {
+        return std::string((char *)data);
     }
 };
 
