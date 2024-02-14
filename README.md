@@ -7,7 +7,7 @@ This project is a big work in progress. I have implemented enough of a base func
 
 ## Software Goals
 - [ ] Arduino Pub/Sub Client
-- [X] Pico Client
+- [X] Cpp Controller Client
 - [X] Comprehensive E2E Tests
 - [X] Expand Unit Tests
 - [X] Property Support

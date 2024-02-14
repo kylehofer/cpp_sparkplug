@@ -47,6 +47,8 @@
 #include <chrono>
 #include <thread>
 
+#include <boost/asio.hpp>
+
 #include <unistd.h>
 
 using namespace std;
@@ -58,6 +60,20 @@ using ::this_thread::sleep_for;
 
 #define FORWARDER_BUFFER_SIZE 4096
 #define LISTENER_BACKLOG 40
+
+bool port_in_use(unsigned short port)
+{
+    using namespace boost::asio;
+    using ip::tcp;
+
+    io_service svc;
+    tcp::acceptor a(svc);
+
+    boost::system::error_code ec;
+    a.open(tcp::v4(), ec) || a.bind({tcp::v4(), port}, ec);
+
+    return ec == error::address_in_use;
+}
 
 int PortForwarder::openListener(int port)
 {
@@ -71,6 +87,10 @@ int PortForwarder::openListener(int port)
         printf("Failed to Open Listener. Port: %d. Error: %s\n", port, strerror(errno));
         return listenerSocket;
     }
+
+    const int enable = 1;
+    if (setsockopt(listenerSocket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0)
+        printf("setsockopt(SO_REUSEADDR) failed\n");
 
     bzero((char *)&address, sizeof(address));
     address.sin_family = AF_INET;
@@ -197,11 +217,8 @@ bool PortForwarder::portCheck(int port, int maxRetries)
 
 void PortForwarder::closeSocket(int socket)
 {
-    // char buffer[FORWARDER_BUFFER_SIZE];
-    // Assuring socket is empty before closing
-    // while (read(socket, buffer, FORWARDER_BUFFER_SIZE) > 0)
-    // {
-    // }
+    char buffer[FORWARDER_BUFFER_SIZE];
+
     close(socket);
 }
 
@@ -254,6 +271,7 @@ void PortForwarder::listener(int source, int destination)
 
                 if (writeLength == -1)
                 {
+
                     break;
                 }
 
@@ -317,6 +335,7 @@ int PortForwarder::start()
         return -1;
     }
     threads.push_back(new thread(&PortForwarder::main, this));
+
     return 0;
 }
 

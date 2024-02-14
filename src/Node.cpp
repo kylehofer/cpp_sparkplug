@@ -565,6 +565,7 @@ void Node::processEvents()
             }
             break;
         case CLIENT_DISCONNECTED:
+            deactivateClient(eventData.client);
             break;
         case CLIENT_ACTIVE:
             setActiveClient(eventData.client);
