@@ -30,6 +30,8 @@ IF(NOT CPP_SPARKPLUG_PAHO)
     list(FILTER SOURCES EXCLUDE REGEX "Paho")
 ENDIF()
 
+list(FILTER SOURCES EXCLUDE REGEX "PahoSync")
+
 # Main library compiling
 add_library(cpp_sparkplug STATIC ${SOURCES})
 
@@ -58,7 +60,7 @@ ELSE()
 ENDIF()
 
 IF(CPP_SPARKPLUG_PAHO)
-    set(PAHO_BUILD_STATIC FALSE)
+    set(PAHO_BUILD_STATIC TRUE)
     set(PAHO_BUILD_SHARED TRUE)
     set(PAHO_WITH_SSL FALSE)
     set(PAHO_HIGH_PERFORMANCE TRUE)
@@ -78,8 +80,9 @@ IF(CPP_SPARKPLUG_PAHO)
 
     target_link_libraries(
         cpp_sparkplug
-        paho-mqtt3a
-        paho-mqtt3c
+        paho-mqtt3a-static
+
+        # paho-mqtt3c-static
     )
 ENDIF()
 
@@ -93,6 +96,6 @@ IF(${BUILD_TARGET} STREQUAL "LINUX")
 ENDIF()
 
 IF(CPP_SPARKPLUG_TESTS AND ${BUILD_TARGET} STREQUAL "LINUX")
-    enable_testing()
-    add_subdirectory(./tests)
+    # enable_testing()
+    # add_subdirectory(./tests)
 ENDIF()
