@@ -30,10 +30,13 @@
  */
 
 #include "SparkplugClient.h"
+#include "utils/TimeManager.h"
 #include "../metrics/simple/Int64Metric.h"
 #include <iostream>
 
 using namespace std;
+
+// #define DEBUGGING 1
 
 #ifdef DEBUGGING
 #define LOGGER(format, ...)       \
@@ -214,7 +217,7 @@ org_eclipse_tahu_protobuf_Payload *SparkplugClient::initializePayload(bool hasSe
     // Initialize payload
     memset(payload, 0, sizeof(org_eclipse_tahu_protobuf_Payload));
     payload->has_timestamp = true;
-    payload->timestamp = getTime();
+    payload->timestamp = TimeManager::getTime();
     if (hasSeq)
     {
         LOGGER("Current Sequence Number: %u\n", payloadSequence);
@@ -239,21 +242,23 @@ void SparkplugClient::destroyRequest(PublishRequest *publishRequest)
 
 void SparkplugClient::setState(ClientState state)
 {
+    if (this->state == state)
+    {
+        return;
+    }
     switch (state)
     {
     case CONNECTED:
         break;
     case CONNECTING:
-        /* code */
+        break;
+    case PUBLISHING_PAYLOAD:
         break;
     case DISCONNECTING:
-        /* code */
         break;
     case DISCONNECTED:
         setPrimary(false);
-        /* code */
         break;
-
     default:
         break;
     }

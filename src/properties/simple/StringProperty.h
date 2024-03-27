@@ -60,6 +60,29 @@ public:
     {
         return std::shared_ptr<StringProperty>(new StringProperty(name, data));
     }
+
+    /**
+     * @brief Sets a new value of the Property
+     *
+     * @param data String to be copied to the Property
+     */
+    void setValue(std::string value)
+    {
+        if (size == value.length() + 1)
+        {
+            (dirty = (dirty || memcmp(value.c_str(), data, size) != 0)) && memcpy(data, value.c_str(), size);
+            return;
+        }
+        dirty = true;
+        free(data);
+        size = value.length() + 1;
+        data = strdup(value.c_str());
+    }
+
+    std::string getValue()
+    {
+        return std::string((char *)data);
+    }
 };
 
 #endif /* SRC_PROPERTIES_SIMPLE_STRINGPROPERTY */

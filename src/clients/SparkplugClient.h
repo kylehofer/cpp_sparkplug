@@ -391,8 +391,6 @@ public:
      * @return false
      */
     virtual bool isConnected() = 0;
-
-    virtual time_t getTime() = 0;
 };
 
 #endif /* SRC_CLIENTS_SPARKPLUGCLIENT */

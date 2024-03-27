@@ -29,6 +29,8 @@
  * HISTORY:
  */
 
+// #define DEBUGGING 1
+
 #include "Node.h"
 #include <tahu.h>
 #include <algorithm>
@@ -148,7 +150,6 @@ int Node::enable()
 
 void Node::publishBirth()
 {
-    LOGGER("Publishing Birth!\n");
     publish(this, true);
     for_each(devices.begin(), devices.end(), [this](Device *device)
              { publish((Publishable *)device, true); });

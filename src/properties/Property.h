@@ -38,12 +38,13 @@ class Property
 {
 private:
     char *name = NULL;
-    void *data = NULL;
     uint8_t dataType;
-    size_t size;
-    bool dirty = false;
 
 protected:
+    size_t size;
+    bool dirty = false;
+    void *data = NULL;
+
 public:
     Property();
     /**

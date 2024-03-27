@@ -1,16 +1,22 @@
 cmake_minimum_required(VERSION 3.17)
 
 include(FetchContent)
+include(cmake/CPM.cmake)
 
 SET(BUILD_TARGET LINUX CACHE BOOL "")
 SET(FETCH_REMOTE ON CACHE BOOL "")
+SET(CPP_SPARKPLUG_STATIC OFF CACHE BOOL "")
+SET(CPP_SPARKPLUG_SHARED ON CACHE BOOL "")
+SET(CPP_SPARKPLUG_TESTS ON CACHE BOOL "")
+SET(CPP_SPARKPLUG_PAHO_ASYNC ON CACHE BOOL "")
+SET(CPP_SPARKPLUG_PAHO_SYNC ON CACHE BOOL "")
+SET(CPP_SPARKPLUG_MQTT ON CACHE BOOL "")
 
 IF(DEFINED ENV{FETCH_REMOTE})
     SET(FETCH_REMOTE $ENV{FETCH_REMOTE})
 ENDIF()
 
 IF(${BUILD_TARGET} STREQUAL "LINUX")
-    option(CPP_SPARKPLUG_PAHO "" ON)
     option(CPP_SPARKPLUG_TESTS "" ON)
 ENDIF()
 
@@ -18,84 +24,145 @@ project(cpp_sparkplug C CXX ASM)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
 
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
 set(cmake_package_name CPPSparkplug CACHE INTERNAL "")
 
-option(CPP_SPARKPLUG_STATIC "" OFF)
-option(CPP_SPARKPLUG_SHARED "" ON)
-option(CPP_SPARKPLUG_TESTS "" ON)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -fPIC")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 
 file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "src/*.cpp")
 
-IF(NOT CPP_SPARKPLUG_PAHO)
-    list(FILTER SOURCES EXCLUDE REGEX "Paho")
+IF(NOT CPP_SPARKPLUG_PAHO_SYNC)
+    list(FILTER SOURCES EXCLUDE REGEX "PahoSync")
 ENDIF()
 
-list(FILTER SOURCES EXCLUDE REGEX "PahoSync")
+IF(NOT CPP_SPARKPLUG_PAHO_ASYNC)
+    list(FILTER SOURCES EXCLUDE REGEX "PahoAsync")
+ENDIF()
 
 # Main library compiling
-add_library(cpp_sparkplug STATIC ${SOURCES})
+IF(${CPP_SPARKPLUG_STATIC})
+    add_library(cpp_sparkplug STATIC ${SOURCES})
+ELSE()
+    add_library(cpp_sparkplug SHARED ${SOURCES})
+ENDIF()
 
 target_include_directories(cpp_sparkplug PUBLIC "src/")
 
 IF(FETCH_REMOTE)
-    FetchContent_Declare(
+    CPMAddPackage(
         pico_tahu
         GIT_REPOSITORY https://github.com/kylehofer/pico_tahu.git
-        GIT_TAG main
+        GIT_TAG buildUpdates
+        OPTIONS
+        "BUILD_TARGET ${BUILD_TARGET}"
+        "PICO_TAHU_STATIC ${CPP_SPARKPLUG_STATIC}"
+        "PICO_TAHU_SHARED ${CPP_SPARKPLUG_SHARED}"
+        "CMAKE_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX}"
+        "CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE}"
     )
-    FetchContent_MakeAvailable(pico_tahu)
+
 ELSE()
+    SET(PICO_TAHU_STATIC CPP_SPARKPLUG_STATIC CACHE BOOL "")
+    SET(PICO_TAHU_SHARED CPP_SPARKPLUG_SHARED CACHE BOOL "")
     add_subdirectory(./external/pico_tahu)
-ENDIF()
-
-IF(FETCH_REMOTE)
-    FetchContent_Declare(
-        cpp_mqtt_client
-        GIT_REPOSITORY https://github.com/kylehofer/cpp_mqtt_client.git
-        GIT_TAG main
-    )
-    FetchContent_MakeAvailable(cpp_mqtt_client)
-ELSE()
-    add_subdirectory(./external/cpp_mqtt_client)
-ENDIF()
-
-IF(CPP_SPARKPLUG_PAHO)
-    set(PAHO_BUILD_STATIC TRUE)
-    set(PAHO_BUILD_SHARED TRUE)
-    set(PAHO_WITH_SSL FALSE)
-    set(PAHO_HIGH_PERFORMANCE TRUE)
-    set(PAHO_BUILD_SAMPLES FALSE)
-    set(PAHO_ENABLE_TESTING FALSE)
-    set(PAHO_BUILD_DOCUMENTATION FALSE)
-
-    # Grabbing paho MQTT
-    FetchContent_Declare(
-        paho_mqtt
-        GIT_REPOSITORY https://github.com/eclipse/paho.mqtt.c.git
-        GIT_TAG e0ce44679aaeada4c39769f9d0c9bd954ad4b156 # release-1.4
-    )
-
-    FetchContent_MakeAvailable(paho_mqtt)
-    target_include_directories(cpp_sparkplug PUBLIC "${paho_mqtt_SOURCE_DIR}/src")
-
-    target_link_libraries(
-        cpp_sparkplug
-        paho-mqtt3a-static
-
-        # paho-mqtt3c-static
-    )
 ENDIF()
 
 target_link_libraries(cpp_sparkplug
     pico_tahu
-    cpp_mqtt_client
 )
 
-IF(${BUILD_TARGET} STREQUAL "LINUX")
-    add_subdirectory(./examples)
+IF(CPP_SPARKPLUG_MQTT)
+    IF(FETCH_REMOTE)
+        CPMAddPackage(
+            cpp_mqtt_client
+            GIT_REPOSITORY https://github.com/kylehofer/cpp_mqtt_client.git
+            GIT_TAG buildUpdates
+            OPTIONS
+            "BUILD_TARGET ${BUILD_TARGET}"
+            "MQTT_ENABLE_TESTING ${FALSE}"
+            "CPP_MQTT_STATIC ${CPP_SPARKPLUG_STATIC}"
+            "CPP_MQTT_SHARED ${CPP_SPARKPLUG_SHARED}"
+            "CMAKE_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX}"
+            "CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE}"
+        )
+
+    ELSE()
+        SET(CPP_MQTT_STATIC CPP_SPARKPLUG_STATIC CACHE BOOL "")
+        SET(CPP_MQTT_SHARED CPP_SPARKPLUG_SHARED CACHE BOOL "")
+        add_subdirectory(./external/cpp_mqtt_client)
+    ENDIF()
+
+    target_link_libraries(cpp_sparkplug
+        cpp_mqtt_client
+    )
 ENDIF()
 
-IF(CPP_SPARKPLUG_TESTS AND ${BUILD_TARGET} STREQUAL "LINUX")
-    # enable_testing()
-    # add_subdirectory(./tests)
+IF(CPP_SPARKPLUG_PAHO_SYNC OR CPP_SPARKPLUG_PAHO_ASYNC)
+    # Grabbing paho MQTT
+    CPMAddPackage(
+        paho_mqtt
+        GIT_REPOSITORY https://github.com/eclipse/paho.mqtt.c.git
+        GIT_TAG e0ce44679aaeada4c39769f9d0c9bd954ad4b156
+        OPTIONS
+        "PAHO_BUILD_STATIC ${CPP_SPARKPLUG_STATIC}"
+        "PAHO_BUILD_SHARED ${CPP_SPARKPLUG_SHARED}"
+        "PAHO_WITH_SSL FALSE"
+        "PAHO_HIGH_PERFORMANCE TRUE"
+        "PAHO_BUILD_SAMPLES FALSE"
+        "PAHO_ENABLE_TESTING FALSE"
+        "PAHO_BUILD_DOCUMENTATION FALSE"
+        "CMAKE_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX}"
+        "CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE}"
+    )
+
+    IF(CPP_SPARKPLUG_PAHO_SYNC)
+        IF(CPP_SPARKPLUG_STATIC)
+            target_link_libraries(
+                cpp_sparkplug
+                paho-mqtt3c-static
+            )
+        ELSE()
+            target_link_libraries(
+                cpp_sparkplug
+                paho-mqtt3c
+            )
+        ENDIF()
+    ENDIF()
+
+    IF(CPP_SPARKPLUG_PAHO_ASYNC)
+        IF(CPP_SPARKPLUG_STATIC)
+            target_link_libraries(
+                cpp_sparkplug
+                paho-mqtt3a-static
+            )
+        ELSE()
+            target_link_libraries(
+                cpp_sparkplug
+                paho-mqtt3a
+            )
+        ENDIF()
+    ENDIF()
+
+    IF(${BUILD_TARGET} STREQUAL "LINUX")
+        add_subdirectory(./examples)
+    ENDIF()
+
+    IF(CPP_SPARKPLUG_TESTS AND ${BUILD_TARGET} STREQUAL "LINUX")
+        enable_testing()
+        add_subdirectory(./tests)
+    ENDIF()
+ELSE()
 ENDIF()
+
+set_target_properties(cpp_sparkplug PROPERTIES PUBLIC_HEADER "${HEADERS}")
+
+INSTALL(TARGETS cpp_sparkplug
+    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

@@ -36,6 +36,7 @@
 #include <vector>
 #include <functional>
 #include <memory>
+#include <time.h>
 #include "../properties/Property.h"
 
 class Metric;
@@ -65,6 +66,7 @@ private:
     CommandHandler *handler = NULL;
     std::function<void(Metric *, org_eclipse_tahu_protobuf_Payload_Metric *)> callback;
     bool isReadOnly = true;
+    time_t changedTime = 0;
 
 protected:
     std::vector<std::shared_ptr<Property>> properties;

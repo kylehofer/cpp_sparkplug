@@ -37,6 +37,8 @@
 using namespace std;
 using namespace PicoMqtt;
 
+// #define DEBUGGING 1
+
 #define QOS QoS::ZERO
 
 #ifdef DEBUGGING

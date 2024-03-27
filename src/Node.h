@@ -43,6 +43,7 @@
 #include <forward_list>
 #include <mutex>
 #include "metrics/simple/BooleanMetric.h"
+#include "utils/TimeManager.h"
 
 using namespace std;
 
