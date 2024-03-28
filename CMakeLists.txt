@@ -59,7 +59,7 @@ IF(FETCH_REMOTE)
     CPMAddPackage(
         pico_tahu
         GIT_REPOSITORY https://github.com/kylehofer/pico_tahu.git
-        GIT_TAG buildUpdates
+        GIT_TAG main
         OPTIONS
         "BUILD_TARGET ${BUILD_TARGET}"
         "PICO_TAHU_STATIC ${CPP_SPARKPLUG_STATIC}"
@@ -83,7 +83,7 @@ IF(CPP_SPARKPLUG_MQTT)
         CPMAddPackage(
             cpp_mqtt_client
             GIT_REPOSITORY https://github.com/kylehofer/cpp_mqtt_client.git
-            GIT_TAG buildUpdates
+            GIT_TAG main
             OPTIONS
             "BUILD_TARGET ${BUILD_TARGET}"
             "MQTT_ENABLE_TESTING ${FALSE}"
