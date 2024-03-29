@@ -32,9 +32,10 @@
 #include <utility>
 
 #include "Metric.h"
-#include <iostream>
+#include "utils/TimeManager.h"
+#include "properties/simple/BooleanProperty.h"
 #include <pb_decode.h>
-#include "../properties/simple/BooleanProperty.h"
+#include <iostream>
 
 Metric::~Metric()
 {
@@ -59,6 +60,9 @@ void Metric::addToPayload(org_eclipse_tahu_protobuf_Payload *payload, bool isBir
         {
         }
 
+        metric.has_timestamp = true;
+        metric.timestamp = isBirth ? TimeManager::getTime() : changedTime;
+
         if (properties.size() > 0)
         {
             org_eclipse_tahu_protobuf_Payload_PropertySet propertySet;
@@ -81,7 +85,12 @@ void Metric::addToPayload(org_eclipse_tahu_protobuf_Payload *payload, bool isBir
 
 void Metric::setValue(void *data)
 {
-    (dirty = (dirty || memcmp(data, this->data, size) != 0)) && memcpy(this->data, data, size);
+    if (dirty || memcmp(data, this->data, size) != 0)
+    {
+        dirty = true;
+        memcpy(this->data, data, size);
+        changedTime = TimeManager::getTime();
+    }
 };
 
 bool Metric::isDirty()

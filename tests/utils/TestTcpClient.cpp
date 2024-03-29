@@ -94,6 +94,7 @@ static DataBuffer *initializeDataBuffer(size_t length)
 int TestTcpClient::connect(const char *host, uint16_t port)
 {
     this->port = port;
+
     if (start() < 0)
     {
         return -1;
@@ -231,25 +232,7 @@ void TestTcpClient::stop()
 
 uint8_t TestTcpClient::connected()
 {
-    int error = 0;
-    socklen_t len = sizeof(error);
-    int retval = getsockopt(openSocket, SOL_SOCKET, SO_ERROR, &error, &len);
-
-    if (retval != 0)
-    {
-        /* there was a problem getting the error code */
-        fprintf(stderr, "error getting socket error code: %s\n", strerror(retval));
-        return 0;
-    }
-
-    if (error != 0)
-    {
-        /* socket has a non zero error status */
-        fprintf(stderr, "socket error: %s\n", strerror(error));
-        return 0;
-    }
-
-    return openSocket;
+    return _connected;
 }
 
 void TestTcpClient::sync()
@@ -257,7 +240,7 @@ void TestTcpClient::sync()
     struct pollfd pfd[1];
 
     pfd[0].fd = openSocket;
-    pfd[0].events = POLLIN;
+    pfd[0].events = POLLIN | POLLRDHUP;
 
     char buffer[FORWARDER_BUFFER_SIZE];
     int readLength, writeLength, written;
@@ -266,15 +249,21 @@ void TestTcpClient::sync()
     if ((pfd[0].revents & (POLLIN)))
     {
         readLength = ::read(openSocket, buffer, FORWARDER_BUFFER_SIZE);
-        if (readLength <= 0)
+        if (readLength < 0)
         {
+            _connected = false;
+            return;
+        }
+        else if (readLength == 0)
+        {
+            _connected = false;
+            close(openSocket);
             return;
         }
 
         DataBuffer *received;
         received = initializeDataBuffer((const uint8_t *)buffer, readLength);
 
-        // memcpy((void *)received->data, buffer, readLength);
         availableData += readLength;
 
         if (receiveQueue == NULL)
@@ -293,6 +282,12 @@ void TestTcpClient::sync()
             tail->next = received;
         }
     }
+    else if (pfd[0].revents & POLLRDHUP)
+    {
+    }
+    else
+    {
+    }
 }
 
 int TestTcpClient::open(int port)
@@ -305,7 +300,7 @@ int TestTcpClient::open(int port)
 
     if (forward == NULL)
     {
-        printf("Failed to get localhost for output.\n");
+        printf("Failed to get localhost for TestTcp.\n");
         return -1;
     }
 
@@ -318,7 +313,7 @@ int TestTcpClient::open(int port)
 
     if (openSocket < 0)
     {
-        printf("Failed to create Output socket. Port: %d. Error: %s\n", port, strerror(errno));
+        printf("Failed to create TestTcp socket. Port: %d. Error: %s\n", port, strerror(errno));
         return openSocket;
     }
 
@@ -326,9 +321,11 @@ int TestTcpClient::open(int port)
 
     if (result != 0)
     {
-        printf("Failed to open Output socket. Port: %d. Error: %s\n", port, strerror(errno));
+        printf("Failed to open TestTcp socket. Port: %d. Error: %s\n", port, strerror(errno));
         return result;
     }
+
+    _connected = true;
 
     return openSocket;
 }

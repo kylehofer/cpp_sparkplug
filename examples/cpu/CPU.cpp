@@ -93,8 +93,6 @@ void CPU::buildCpuList()
 
     const char *search = "cpu";
 
-    char buffer[6];
-
     while (getline(fileInput, line))
     {
         if (line.find(search, 0) != string::npos)
@@ -106,7 +104,7 @@ void CPU::buildCpuList()
 
     char cpuName[9];
 
-    for (size_t i = 0; i < count; i++)
+    for (uint8_t i = 0; i < count; i++)
     {
         if (i == 0)
         {
@@ -114,7 +112,7 @@ void CPU::buildCpuList()
         }
         else
         {
-            sprintf(cpuName, "cpu%lu", i - 1);
+            sprintf(cpuName, "cpu%u", i - 1);
         }
         cpus.push_back(unique_ptr<CPU>(new CPU(cpuName)));
     }
@@ -156,9 +154,15 @@ void CPU::updateValues()
     {
         if (line.find(search, 0) != string::npos)
         {
-
+#if __GNUC__
+#if __x86_64__ || __ppc64__
             sscanf(line.c_str(), "%s %lu %lu %lu %lu %lu %lu %lu", buffer, &totalUser, &totalUserLow,
                    &totalSys, &totalIdle, &totalIoWait, &totalIrq, &totalSoftIrq);
+#else
+            sscanf(line.c_str(), "%s %llu %llu %llu %llu %llu %llu %llu", buffer, &totalUser, &totalUserLow,
+                   &totalSys, &totalIdle, &totalIoWait, &totalIrq, &totalSoftIrq);
+#endif
+#endif
 
             cpus.at(count)->update(totalUser, totalUserLow,
                                    totalSys, totalIdle,

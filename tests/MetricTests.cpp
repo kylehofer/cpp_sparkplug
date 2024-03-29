@@ -33,6 +33,8 @@
 
 #include <tahu.h>
 
+#include "utils/MockTimeManager.h"
+
 #include "metrics/simple/Int32Metric.h"
 #include "metrics/simple/StringMetric.h"
 
@@ -98,6 +100,8 @@ TEST(SimpleMetric, TestStringDirty)
 
 TEST(SimpleMetric, TestAddToPayload)
 {
+    MockTimeManager mockManager;
+    TimeManager::setInstance((TimeClient *)&mockManager);
     char metricName[] = {"MetricName"};
     org_eclipse_tahu_protobuf_Payload payload;
     get_next_payload(&payload);
@@ -110,22 +114,31 @@ TEST(SimpleMetric, TestAddToPayload)
     testMetric->addToPayload(&payload, true);
     EXPECT_EQ(payload.metrics_count, 1);
     EXPECT_EQ(payload.metrics[0].value.int_value, 20);
+    EXPECT_TRUE(payload.metrics[0].has_timestamp);
+    EXPECT_EQ(payload.metrics[0].timestamp, 0);
 
     testMetric->addToPayload(&payload);
     EXPECT_EQ(payload.metrics_count, 1);
 
     int newValue = 50;
 
+    mockManager.setTime(1000);
     testMetric->setValue(newValue);
+
+    mockManager.setTime(2000);
     testMetric->addToPayload(&payload);
     EXPECT_EQ(payload.metrics_count, 2);
     EXPECT_EQ(payload.metrics[1].value.int_value, 50);
+    EXPECT_TRUE(payload.metrics[1].has_timestamp);
+    EXPECT_EQ(payload.metrics[1].timestamp, 1000);
 
     EXPECT_TRUE(testMetric->isDirty());
 
     testMetric->published();
 
     EXPECT_FALSE(testMetric->isDirty());
+
+    TimeManager::reset();
 
     free_payload(&payload);
 }

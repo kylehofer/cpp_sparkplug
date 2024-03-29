@@ -29,8 +29,8 @@
  * HISTORY:
  */
 
-#ifndef INCLUDE_DEVICE
-#define INCLUDE_DEVICE
+#ifndef SRC_DEVICE
+#define SRC_DEVICE
 
 #include "Publishable.h"
 
@@ -91,4 +91,4 @@ public:
     using Publishable::update;
 };
 
-#endif /* INCLUDE_DEVICE */
+#endif /* SRC_DEVICE */

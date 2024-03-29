@@ -271,7 +271,7 @@ TEST(NodeTests, executeHappyPrimaryTest)
     EXPECT_STREQ(requestedPublish->topic.c_str(), "spBv1.0/GroupId/NBIRTH/NodeId");
 
     // We should expect our brocket to be requested to send this request
-    EXPECT_CALL(*mockClient, publishMessage(requestedPublish->topic, NotNull(), 25, &requestedPublish->token))
+    EXPECT_CALL(*mockClient, publishMessage(requestedPublish->topic, NotNull(), 32, &requestedPublish->token))
         .WillOnce([mockClient](std::string topic, uint8_t *buffer, size_t length, DeliveryToken *token)
                   { return 0; });
 
@@ -368,7 +368,7 @@ TEST(NodeTests, executeHappyTest)
     EXPECT_STREQ(requestedPublish->topic.c_str(), "spBv1.0/GroupId/NBIRTH/NodeId");
 
     // We should expect our brocket to be requested to send this request
-    EXPECT_CALL(*mockClient, publishMessage(requestedPublish->topic, NotNull(), 25, &requestedPublish->token))
+    EXPECT_CALL(*mockClient, publishMessage(requestedPublish->topic, NotNull(), 32, &requestedPublish->token))
         .WillOnce([mockClient](std::string topic, uint8_t *buffer, size_t length, DeliveryToken *token)
                   { return 0; });
 

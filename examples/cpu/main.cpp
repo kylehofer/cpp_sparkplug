@@ -29,8 +29,12 @@
  * HISTORY:
  */
 
-#include "clients/PahoSyncClient.h"
+#ifdef EXAMPLE_ASYNC
 #include "clients/PahoAsyncClient.h"
+#else
+#include "clients/PahoSyncClient.h"
+#endif
+
 #include "Node.h"
 #include "Device.h"
 
@@ -120,7 +124,12 @@ int main(int argc, char *argv[])
 
     CPU::updateValues();
 
+#ifdef EXAMPLE_ASYNC
     node.addClient<PahoAsyncClient>(&clientOptions);
+#else
+    node.addClient<PahoSyncClient>(&clientOptions);
+#endif
+
     node.enable();
 
     uint32_t retries = 0;

@@ -93,8 +93,6 @@ public:
      * @return int
      */
     int request(PublishRequest *publishRequest);
-
-    virtual time_t getTime() override;
 };
 
 #endif /* SRC_CLIENTS_PAHOCLIENT */

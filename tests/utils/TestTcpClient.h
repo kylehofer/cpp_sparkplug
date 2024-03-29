@@ -57,6 +57,8 @@ private:
     bool stopped = true;
     bool blocked = false;
 
+    bool _connected = false;
+
     int availableData = 0;
     size_t writeSize = 0;
 

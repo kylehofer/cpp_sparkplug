@@ -8,6 +8,9 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
+find_package(Boost REQUIRED COMPONENTS program_options regex)
+include_directories(${Boost_INCLUDE_DIRS})
+
 file(GLOB_RECURSE TEST_SOURCES ${CMAKE_SOURCE_DIR} "*.cpp")
 
 enable_testing()
@@ -26,6 +29,8 @@ target_link_libraries(
     GTest::gmock_main
     cpp_sparkplug
     mosquitto
+    ${Boost_PROGRAM_OPTIONS_LIBRARY}
+    ${Boost_REGEX_LIBRARY}
 )
 
 include(GoogleTest)

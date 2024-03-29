@@ -169,7 +169,7 @@ inline void expectData(TestClientUtility *testClient, Node *node, const char *to
 // Tests a broker disconnection
 TYPED_TEST_P(BrokerTests, NodeWithDisconnect)
 {
-    GTEST_SKIP() << "Skipping as Port Forwarder is broken";
+    GTEST_SKIP() << "Skipping as Paho Libraries are not detecting disconnections";
     PortForwarder sparkplugForwarder = PortForwarder(1884, BROKER_PORT);
 
     sparkplugForwarder.start();
@@ -227,7 +227,7 @@ TYPED_TEST_P(BrokerTests, NodeWithDisconnect)
         sleep_for(milliseconds(RETRY_TIMEOUT));
     }
 
-    EXPECT_FALSE(node.isActive());
+    ASSERT_FALSE(node.isActive()) << "Retry Count: " << retries;
 
     EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/NDEATH/NodeId", -1);
 
@@ -249,8 +249,8 @@ TYPED_TEST_P(BrokerTests, NodeWithDisconnect)
     testDeviceMetric->setValue(value);
     executeTime = node.execute(executeTime);
 
-    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/NDATA/NodeId", 2);
-    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/DDATA/NodeId/DeviceName", 3);
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/NBIRTH/NodeId", 0);
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/DBIRTH/NodeId/DeviceName", 1);
 
     node.stop();
     sparkplugForwarder.stop();
@@ -260,7 +260,7 @@ TYPED_TEST_P(BrokerTests, NodeWithDisconnect)
 // Tests a broker disconnection
 TYPED_TEST_P(BrokerTests, NodeDisconnectWhilePublishing)
 {
-    GTEST_SKIP() << "Skipping as Port Forwarder is broken";
+    GTEST_SKIP() << "Skipping as Paho Libraries are not detecting disconnections";
     PortForwarder sparkplugForwarder = PortForwarder(1884, BROKER_PORT);
 
     sparkplugForwarder.start();
@@ -327,7 +327,7 @@ TYPED_TEST_P(BrokerTests, NodeDisconnectWhilePublishing)
         sleep_for(milliseconds(RETRY_TIMEOUT));
     }
 
-    EXPECT_FALSE(node.isActive());
+    ASSERT_FALSE(node.isActive());
 
     EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/NDEATH/NodeId", -1);
 
@@ -349,8 +349,8 @@ TYPED_TEST_P(BrokerTests, NodeDisconnectWhilePublishing)
     testDeviceMetric->setValue(value);
     executeTime = node.execute(executeTime);
 
-    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/NDATA/NodeId", 3);
-    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/DDATA/NodeId/DeviceName", 4);
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/NBIRTH/NodeId", 0);
+    EXPECT_DATA(&testClient, &node, "spBv1.0/GroupId/DBIRTH/NodeId/DeviceName", 1);
 
     node.stop();
     sparkplugForwarder.stop();
