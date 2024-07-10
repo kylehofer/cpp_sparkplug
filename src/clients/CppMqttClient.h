@@ -40,7 +40,7 @@
 #include <memory>
 
 using namespace std;
-using namespace PicoMqtt;
+using namespace CppMqtt;
 
 class CppMqttClient : public SparkplugClient, MqttClientHandler
 {
