@@ -35,7 +35,7 @@
 #include <string>
 
 using namespace std;
-using namespace PicoMqtt;
+using namespace CppMqtt;
 
 // #define DEBUGGING 1
 
