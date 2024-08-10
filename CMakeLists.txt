@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.17)
 
 include(FetchContent)
+include(GNUInstallDirs)
 include(cmake/CPM.cmake)
 
 SET(BUILD_TARGET LINUX CACHE BOOL "")
