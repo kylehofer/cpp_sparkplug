@@ -29,8 +29,8 @@
  * HISTORY:
  */
 
-#ifndef INCLUDE_CLIENTS_PAHOASYNCCLIENT
-#define INCLUDE_CLIENTS_PAHOASYNCCLIENT
+#ifndef SRC_CLIENTS_PAHOASYNCCLIENT
+#define SRC_CLIENTS_PAHOASYNCCLIENT
 
 #include "clients/PahoClient.h"
 #include "MQTTAsync.h"
@@ -54,31 +54,31 @@ protected:
      *
      * @return 0 if the request was sent succesfully
      */
-    int clientConnect();
+    virtual int clientConnect() override;
     /**
      * @brief Requests the SparkplugClient todisconnect from the MQTT Host
      *
      * @return 0 if the request was sent succesfully
      */
-    int clientDisconnect();
+    virtual int clientDisconnect() override;
     /**
      * @brief Requests the SparkplugClient to subscribe to the Primary Host topic
      *
      * @return 0 if the request was sent succesfully
      */
-    int subscribeToPrimaryHost();
+    virtual int subscribeToPrimaryHost() override;
     /**
      * @brief Requests the SparkplugClient to subscribe to the command topics
      *#endif // __CONNECT_H__
      * @return 0 if the request was sent succesfully
      */
-    int subscribeToCommands();
+    virtual int subscribeToCommands() override;
     /**
      * @brief Requests the SparkplugClient to unsubscribe from the command topics
      *
      * @return 0 if the request was sent succesfully
      */
-    int unsubscribeToCommands();
+    virtual int unsubscribeToCommands() override;
     /**
      * @brief Requests the SparkplugClient to publish a buffer to a MQTT Host
      *
@@ -89,14 +89,13 @@ protected:
      * @return 0 if the request was sent succesfully
      */
     virtual int publishMessage(const std::string &topic, uint8_t *buffer, size_t length, DeliveryToken *token) override;
-    ;
     /**
      * @brief Configures an Asynchronous MQTT Client that will be used for publishing and subscribing to an MQTT host.
      *
      * @param options ClientOptions used to configure the client
      * @return 0 if the client was configured successfully
      */
-    int configureClient(ClientOptions *options);
+    virtual int configureClient(ClientOptions *options) override;
 
 public:
     /**
@@ -111,7 +110,7 @@ public:
      * @param options The options for configuring the MQTT Client
      */
     PahoAsyncClient(ClientEventHandler *handler, ClientOptions *options) : PahoClient(handler, options) {}
-    ~PahoAsyncClient();
+    virtual ~PahoAsyncClient();
     /**
      * @brief Callback method for when a publish has been delivered on a client.
      * The token is used to match to a SparkplugRequest. The client will inform the EventHandler of the
@@ -146,7 +145,7 @@ public:
      * As the Paho Client is async this function does nothing.
      *
      */
-    void sync(){};
+    virtual void sync() override {};
     /**
      * @brief Callback for when Node/Device topics have successfully subscribed.
      */
@@ -157,7 +156,7 @@ public:
      * @return true
      * @return false
      */
-    bool isConnected();
+    virtual bool isConnected() override;
 };
 
-#endif /* INCLUDE_CLIENTS_PAHOASYNCCLIENT */
+#endif /* SRC_CLIENTS_PAHOASYNCCLIENT */

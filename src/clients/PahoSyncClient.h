@@ -54,31 +54,31 @@ protected:
      *
      * @return 0 if the request was sent succesfully
      */
-    int clientConnect();
+    virtual int clientConnect() override;
     /**
      * @brief Requests the SparkplugClient todisconnect from the MQTT Host
      *
      * @return 0 if the request was sent succesfully
      */
-    int clientDisconnect();
+    virtual int clientDisconnect() override;
     /**
      * @brief Requests the SparkplugClient to subscribe to the Primary Host topic
      *
      * @return 0 if the request was sent succesfully
      */
-    int subscribeToPrimaryHost();
+    virtual int subscribeToPrimaryHost() override;
     /**
      * @brief Requests the SparkplugClient to subscribe to the command topics
      *
      * @return 0 if the request was sent succesfully
      */
-    int subscribeToCommands();
+    virtual int subscribeToCommands() override;
     /**
      * @brief Requests the SparkplugClient to unsubscribe from the command topics
      *
      * @return 0 if the request was sent succesfully
      */
-    int unsubscribeToCommands();
+    virtual int unsubscribeToCommands() override;
     /**
      * @brief Requests the SparkplugClient to publish a buffer to a MQTT Host
      *
@@ -95,7 +95,7 @@ protected:
      * @param options ClientOptions used to configure the client
      * @return 0 if the client was configured successfully
      */
-    int configureClient(ClientOptions *options);
+    virtual int configureClient(ClientOptions *options) override;
 
 public:
     /**
@@ -145,14 +145,14 @@ public:
      * As the Paho Client is async this function does nothing.
      *
      */
-    void sync();
+    virtual void sync() override;
     /**
      * @brief Returns whether the client is connected
      *
      * @return true
      * @return false
      */
-    bool isConnected();
+    virtual bool isConnected() override;
 };
 
 #endif /* INCLUDE_PAHOSYNCCLIENT */
