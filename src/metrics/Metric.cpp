@@ -68,12 +68,16 @@ void Metric::addToPayload(org_eclipse_tahu_protobuf_Payload *payload, bool isBir
             org_eclipse_tahu_protobuf_Payload_PropertySet propertySet;
             memset(&propertySet, 0, sizeof(propertySet));
 
+            bool added = false;
+
             for (auto &property : properties)
             {
-                property->addToPropertySet(&propertySet, isBirth);
+                added |= property->addToPropertySet(&propertySet, isBirth);
             }
-
-            add_propertyset_to_metric(&metric, &propertySet);
+            if (added)
+            {
+                add_propertyset_to_metric(&metric, &propertySet);
+            }
         }
 
         if (add_metric_to_payload(payload, &metric) < 0)

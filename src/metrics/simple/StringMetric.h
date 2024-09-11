@@ -46,7 +46,7 @@ private:
      * @param name The name of the Sparkplug Metric
      * @param data The first value of the metric
      */
-    StringMetric(const char *name, std::string data) : SimpleMetric(name, (void *)data.c_str(), data.length() + 1, METRIC_DATA_TYPE_STRING){};
+    StringMetric(const char *name, std::string data) : SimpleMetric(name, (void *)data.c_str(), data.length() + 1, METRIC_DATA_TYPE_STRING) {};
 
 public:
     /**
@@ -71,12 +71,14 @@ public:
         if (size == value.length() + 1)
         {
             (dirty = (dirty || memcmp(value.c_str(), data, size) != 0)) && memcpy(data, value.c_str(), size);
+            changedTime = TimeManager::getTime();
             return;
         }
         dirty = true;
         free(data);
         size = value.length() + 1;
         data = strdup(value.c_str());
+        changedTime = TimeManager::getTime();
     }
 
     std::string getValue()

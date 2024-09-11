@@ -134,7 +134,7 @@ int Property::addToPropertySet(org_eclipse_tahu_protobuf_Payload_PropertySet *pr
 {
     if (dirty || isBirth)
     {
-        return add_property_to_set(propertySet, name, dataType, data, size);
+        return add_property_to_set(propertySet, name, dataType, data, size) == 0;
     }
     return 0;
 }
