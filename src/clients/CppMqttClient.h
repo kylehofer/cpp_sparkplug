@@ -81,31 +81,31 @@ protected:
      *
      * @return 0 if the request was sent succesfully
      */
-    int clientConnect();
+    virtual int clientConnect() override;
     /**
      * @brief Requests the SparkplugClient todisconnect from the MQTT Host
      *
      * @return 0 if the request was sent succesfully
      */
-    int clientDisconnect();
+    virtual int clientDisconnect() override;
     /**
      * @brief Requests the SparkplugClient to subscribe to the Primary Host topic
      *
      * @return 0 if the request was sent succesfully
      */
-    int subscribeToPrimaryHost();
+    virtual int subscribeToPrimaryHost() override;
     /**
      * @brief Requests the SparkplugClient to subscribe to the command topics
      *
      * @return 0 if the request was sent succesfully
      */
-    int subscribeToCommands();
+    virtual int subscribeToCommands() override;
     /**
      * @brief Requests the SparkplugClient to unsubscribe from the command topics
      *
      * @return 0 if the request was sent succesfully
      */
-    int unsubscribeToCommands();
+    virtual int unsubscribeToCommands() override;
     /**
      * @brief Requests the SparkplugClient to publish a buffer to a MQTT Host
      *
@@ -115,14 +115,14 @@ protected:
      * @param token A unique token that will be attached to the message being sent. Used to identify when messages are delivered by asynchronous clients
      * @return 0 if the request was sent succesfully
      */
-    int publishMessage(const string &topic, uint8_t *buffer, size_t length, DeliveryToken *token);
+    virtual int publishMessage(const string &topic, uint8_t *buffer, size_t length, DeliveryToken *token) override;
     /**
      * @brief Configures an Asynchronous MQTT Client that will be used for publishing and subscribing to an MQTT host.
      *
      * @param options ClientOptions used to configure the client
      * @return 0 if the client was configured successfully
      */
-    int configureClient(ClientOptions *options);
+    virtual int configureClient(ClientOptions *options) override;
 
 public:
     /**
@@ -147,14 +147,14 @@ public:
      * @brief Used to synchronise the MQTT client.
      *
      */
-    void sync();
+    virtual void sync() override;
     /**
      * @brief Returns whether the client is connected
      *
      * @return true
      * @return false
      */
-    bool isConnected();
+    virtual bool isConnected() override;
     /**
      * @brief Handles a request to publish data to the MQTT Host
      * If requests are being published then the requests is added to the queue
@@ -162,7 +162,7 @@ public:
      * @param publishRequest
      * @return int
      */
-    int request(PublishRequest *publishRequest);
+    virtual int request(PublishRequest *publishRequest) override;
     /**
      * @brief Callback method when the Client successfully connects to a MQTT Host. Will inform the EventHandler that the Client has connected.
      */

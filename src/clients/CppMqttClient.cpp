@@ -1,5 +1,5 @@
 /*
- * File: CppMqttClient.cpp
+ * File: CppMqttclient.cpp
  * Project: cpp_sparkplug
  * Created Date: Monday June 12th 2023
  * Author: Kyle Hofer
@@ -293,6 +293,7 @@ void CppMqttClient::onConnectionSuccess()
 
 void CppMqttClient::onConnectionFailure(int reasonCode)
 {
+    (void)reasonCode;
     LOGGER("Failed to connected. Response Code: %d\n", reasonCode);
     setState(DISCONNECTED);
 }
