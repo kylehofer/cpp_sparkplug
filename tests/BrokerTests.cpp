@@ -586,7 +586,7 @@ TYPED_TEST_P(BrokerTests, NodeWithRebirthCommand)
 
     testClient.waitForData(MAX_RETRIES);
     ASSERT_TRUE(testClient.hasData());
-    testClient.pop();
+    TestClientUtility::freePayload(testClient.pop());
 
     while (!testClient.hasData() && retries++ < MAX_RETRIES)
     {

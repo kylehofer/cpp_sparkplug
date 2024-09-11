@@ -8,17 +8,18 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
-find_package(Boost REQUIRED COMPONENTS program_options regex)
-include_directories(${Boost_INCLUDE_DIRS})
-
+# find_package(Boost REQUIRED COMPONENTS program_options regex)
+# include_directories(${Boost_INCLUDE_DIRS})
 file(GLOB_RECURSE TEST_SOURCES ${CMAKE_SOURCE_DIR} "*.cpp")
 
 enable_testing()
 
 add_executable(cpp_sparkplug_tests ${TEST_SOURCES})
 
-target_include_directories(cpp_sparkplug_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} "utils/")
-target_include_directories(cpp_sparkplug_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} "mocks/")
+target_include_directories(cpp_sparkplug_tests
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} "utils/"
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} "mocks/"
+)
 
 set(WITH_DOCS OFF CACHE BOOL "" FORCE)
 set(WITH_CJSON OFF CACHE BOOL "" FORCE)
