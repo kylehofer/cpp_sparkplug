@@ -37,6 +37,7 @@
 #include <functional>
 #include <memory>
 #include <time.h>
+#include "utils/TimeManager.h"
 #include "../properties/Property.h"
 
 class Metric;
