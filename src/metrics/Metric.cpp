@@ -32,7 +32,6 @@
 #include <utility>
 
 #include "Metric.h"
-#include "utils/TimeManager.h"
 #include "properties/simple/BooleanProperty.h"
 #include <pb_decode.h>
 #include <iostream>
