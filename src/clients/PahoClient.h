@@ -92,7 +92,7 @@ public:
      * @param publishRequest
      * @return int
      */
-    int request(PublishRequest *publishRequest);
+    virtual int request(PublishRequest *publishRequest) override;
 };
 
 #endif /* SRC_CLIENTS_PAHOCLIENT */
